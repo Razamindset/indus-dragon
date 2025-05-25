@@ -5,6 +5,9 @@
 
 #include "../chess-library/include/chess.hpp"
 
+constexpr int MATE_SCORE = 1000000;
+constexpr int DRAW_SCORE = 0;
+
 using namespace chess;
 
 class Engine {
@@ -12,6 +15,10 @@ class Engine {
   Board board;
   int getPieceValue(Piece piece);
   int positionsSearched = 0;
+
+  int evaluate();
+  int minmax(int depth, int alpha, int beta, bool isMaximizing,
+             std::vector<Move>& pv);
 
  public:
   void setPosition(const std::string& fen);
