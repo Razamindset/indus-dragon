@@ -19,6 +19,7 @@ class Engine {
   int evaluate();
   int minmax(int depth, int alpha, int beta, bool isMaximizing,
              std::vector<Move>& pv);
+  void orderMoves(Movelist &moves);
 
  public:
   void setPosition(const std::string& fen);

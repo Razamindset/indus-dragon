@@ -29,6 +29,48 @@ int Engine::getPieceValue(Piece piece) {
   }
 }
 
+
+/* Order moves based on their priority */
+void Engine::orderMoves(Movelist &moves){
+  std::vector<std::pair<Move, int>> scoredMoves;
+  scoredMoves.reserve(moves.size());
+
+  // Loop through each move and assign it a score
+  for(Move move:moves){
+    int score = 0;
+    
+    // Find a good way to check for checks can't use board.makemove()
+
+    // Prioritize captures using MVV-LVA
+    if (board.isCapture(move)) {
+      score = 0;
+      Piece attacker = board.at(move.from());
+      Piece victim = board.at(move.to());
+      score += getPieceValue(victim) - getPieceValue(attacker);
+    }
+
+    // Prioritize promotions
+
+    if (move.promotionType() == QUEEN) score += 900;
+    if (move.promotionType() == ROOK) score += 500;
+    if (move.promotionType() == BISHOP) score += 320;
+    if (move.promotionType() == KNIGHT) score += 300;
+
+    // Add the move to the list along with its score
+    scoredMoves.emplace_back(move, score);
+  }
+
+  // Sort the moves based on scores
+  std::sort(scoredMoves.begin(), scoredMoves.end(),
+            [](const auto& a, const auto& b) { return a.second > b.second; });
+
+  // Replace original move list with sorted moves
+  moves.clear();
+  for (const auto& [move, score] : scoredMoves) {
+    moves.add(move);
+  }
+}
+
 int Engine::evaluate() {
   if (isGameOver()) {
     if (getGameOverReason() == GameResultReason::CHECKMATE) {
@@ -73,6 +115,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
   Movelist moves;
   movegen::legalmoves(moves, board);
+  orderMoves(moves);
   Move bestMove = Move::NULL_MOVE;
 
   if (isMaximizing) {
@@ -130,6 +173,7 @@ std::string Engine::getBestMove(int depth) {
 
   Movelist moves;
   movegen::legalmoves(moves, board);
+  orderMoves(moves);
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE); 
 
@@ -152,7 +196,7 @@ std::string Engine::getBestMove(int depth) {
     if (!isMaximizing && eval < bestEval) {
       bestEval = eval;
       bestMove = move;
-      MovePv = {move};
+      bestLine = {move};
       bestLine.insert(bestLine.end(), MovePv.begin(), MovePv.end());
     }
   }
