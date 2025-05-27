@@ -1,0 +1,3 @@
+1. Add mate distances.
+2. Add a simple tt
+3. Improve Uci Compatibility.
