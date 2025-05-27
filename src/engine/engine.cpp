@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "piece-maps.hpp"
 
 void Engine::printBoard() { std::cout << board; }
 
@@ -101,6 +102,45 @@ int Engine::evaluate() {
   };
 
   eval += countMaterial(Color::WHITE) - countMaterial(Color::BLACK);
+
+
+  // For now endgame if queens are off the board
+  bool isEndgame = (board.pieces(PieceType::QUEEN, Color::WHITE).count()  + board.pieces(PieceType::QUEEN, Color::BLACK).count() == 0);
+
+  // Add values from piece square tables
+  for (Square sq = 0; sq < 64; sq++) {
+    Piece piece = board.at(sq);
+    if (piece.type() == PieceType::NONE) continue;
+
+    // This loop starts priniting from white's perspective 
+    // White last rook gets an index of 0 which is mirrored so we use the mirrored function for white only and for black we just get value as it is. The only differense is for white +value and for black -ive value 
+    int index = (piece.color() == Color::WHITE) ? mirrorIndex(sq.index()) : sq.index();
+    int squareValue = 0;
+
+    switch (piece.type()) {
+      case PAWN:
+        squareValue = PAWN_TABLE[index];
+        break;
+      case KNIGHT:
+        squareValue = KNIGHT_TABLE[index];
+        break;
+      case BISHOP:
+        squareValue = BISHOP_TABLE[index];
+        break;
+      case ROOK:
+        squareValue = ROOK_TABLE[index];
+        break;
+      case QUEEN:
+        squareValue = QUEEN_TABLE[index];
+        break;
+      case KING:
+        squareValue =
+            isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+        break;
+    }
+
+    eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
+  }
 
   return eval;
 }
