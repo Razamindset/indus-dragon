@@ -16,9 +16,9 @@ class Engine {
   int getPieceValue(Piece piece);
   int positionsSearched = 0;
 
-  int evaluate();
+  int evaluate(int ply);
   int minmax(int depth, int alpha, int beta, bool isMaximizing,
-             std::vector<Move>& pv);
+             std::vector<Move>& pv, int ply);
   void orderMoves(Movelist &moves);
 
  public:

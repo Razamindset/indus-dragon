@@ -72,13 +72,13 @@ void Engine::orderMoves(Movelist &moves){
   }
 }
 
-int Engine::evaluate() {
+int Engine::evaluate(int ply) {
   if (isGameOver()) {
     if (getGameOverReason() == GameResultReason::CHECKMATE) {
       if (board.sideToMove() == Color::WHITE) {
-        return -MATE_SCORE;
+        return -MATE_SCORE + ply;
       } else {
-        return MATE_SCORE;
+        return MATE_SCORE - ply;
       }
     }
     return DRAW_SCORE;
@@ -145,13 +145,14 @@ int Engine::evaluate() {
   return eval;
 }
 
-int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv) {
+int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
 
   if (depth == 0 || isGameOver()) {
-    return evaluate();
+    return evaluate(ply);
   }
 
   positionsSearched++;
+  ply+=1;
 
   Movelist moves;
   movegen::legalmoves(moves, board);
@@ -164,7 +165,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     for (Move move : moves) {
       board.makeMove(move);
       std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, false, childPv);
+      int eval = minmax(depth - 1, alpha, beta, false, childPv, ply);
       board.unmakeMove(move);
 
       if (eval > maxEval) {
@@ -187,7 +188,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     for (Move move : moves) {
       board.makeMove(move);
       std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, true, childPv);
+      int eval = minmax(depth - 1, alpha, beta, true, childPv, ply);
       board.unmakeMove(move);
 
       if (eval < minEval) {
@@ -224,7 +225,7 @@ std::string Engine::getBestMove(int depth) {
   for (Move move : moves) {
     board.makeMove(move);
     std::vector<Move> MovePv;
-    int eval = minmax(depth - 1, -MATE_SCORE, MATE_SCORE, !isMaximizing, MovePv);
+    int eval = minmax(depth - 1, -MATE_SCORE, MATE_SCORE, !isMaximizing, MovePv, 1);
     board.unmakeMove(move);
 
     if (isMaximizing && eval > bestEval) {
@@ -245,8 +246,23 @@ std::string Engine::getBestMove(int depth) {
     return "";
   }
 
-  // Print the info
-  std::cout << "info depth "<< depth << " nodes " << positionsSearched << " score cp "<< bestEval << " pv ";
+
+  std::cout << "info depth "<< depth << " nodes " << positionsSearched << " score ";
+
+  if (std::abs(bestEval) > (MATE_SCORE - 100)) { 
+    int movesToMate;
+    if (bestEval > 0) { // White is mating
+      movesToMate = MATE_SCORE - bestEval;
+    } else { 
+      movesToMate = MATE_SCORE + bestEval;
+    }
+    int fullMovesToMate = (movesToMate + 1) / 2;
+
+    std::cout << "mate " << (bestEval > 0 ? "" : "-") << fullMovesToMate << " pv ";
+  } else {
+    std::cout << "cp "<< bestEval << " pv ";
+  }
+
   for (Move move : bestLine) {
     std::cout << move << " ";
   }
