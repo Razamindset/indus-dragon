@@ -258,8 +258,16 @@ std::string Engine::getBestMove(int depth) {
     }
     int fullMovesToMate = (movesToMate + 1) / 2;
 
-    std::cout << "mate " << (bestEval > 0 ? "" : "-") << fullMovesToMate << " pv ";
+    // Perspective based mate and eval socores
+    if((board.sideToMove() == Color::BLACK && bestEval >0 )||
+       (board.sideToMove() == Color::WHITE && bestEval <0)){
+      fullMovesToMate = -fullMovesToMate;
+    }
+    std::cout << "mate " << fullMovesToMate << " pv ";
   } else {
+     if(board.sideToMove() == Color::BLACK){
+      bestEval = - bestEval;
+    }
     std::cout << "cp "<< bestEval << " pv ";
   }
 
