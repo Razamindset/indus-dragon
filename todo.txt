@@ -1,3 +1,5 @@
-1. Add a simple tt and killer moves
-2. Improve Uci Compatibility.
-3. Add iterative deepening 
+Add a simple tt 
+Add killer moves
+Add Quiscience search
+Add iterative deepening 
+Improve Uci Compatibility.
