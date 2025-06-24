@@ -30,6 +30,13 @@ int Engine::getPieceValue(Piece piece) {
   }
 }
 
+void Engine::printTTStats() const {
+  std::cout << "Transposition Table Stats:\n";
+  std::cout << "  TT Hits       : " << ttHits << "\n";
+  std::cout << "  TT Collisions : " << ttCollisions << "\n";
+  std::cout << "  TT Stores     : " << ttStores << "\n";
+  std::cout << "  TT Size       : " << transpositionTable.size() << " / " << MAX_TT_ENTRIES << "\n";
+}
 
 bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove){
   //! The TT stored mate scores are having bugss 
@@ -85,16 +92,26 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
 
 // Store an entry in the transposition table
 void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove){
-  // Todo Implement a Find and replacement scheme for old enteries
-  TTEntry entry;
-  entry.bestMove = bestMove;
-  entry.score = score;
-  entry.hash = hash;
-  entry.type = type;
-  entry.depth = depth;
+  ttStores++;
 
-  transpositionTable[hash] = entry;
+  auto it = transpositionTable.find(hash);
+  if(it != transpositionTable.end()){
+    ttCollisions++;
+    if(depth >= it->second.depth){
+      it->second = {hash, score, depth, type, bestMove};
+    }
+  }
+  else{
+    if (transpositionTable.size() >= MAX_TT_ENTRIES) {
+      // Simple scheme: randomly erase one
+      auto toErase = transpositionTable.begin();
+      std::advance(toErase, rand() % transpositionTable.size());
+      transpositionTable.erase(toErase);
+    }
+  }
 
+  // Insert new entry
+  transpositionTable[hash] = {hash, score, depth, type, bestMove};
 }
 
 /* Order moves based on their priority */
@@ -112,22 +129,33 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
       continue;
     }
 
-    // Find a good way to check for checks can't use board.makemove()
+    // Todo Find a good way to check for checks can't use board.makemove()
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
       score = 0;
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
-      score += getPieceValue(victim) - getPieceValue(attacker);
+      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
 
     // Prioritize promotions
-
     if (move.promotionType() == QUEEN) score += 900;
     if (move.promotionType() == ROOK) score += 500;
     if (move.promotionType() == BISHOP) score += 320;
     if (move.promotionType() == KNIGHT) score += 300;
+
+    // Give a slight edge castling
+    if(move.typeOf() == Move::CASTLING){
+      score += 100;
+    }
+
+    // // Prirotize attacks to king Checks 
+    // if (board.kingSq(Color::BLACK) == move.to() ||
+    //   board.kingSq(Color::WHITE) == move.to()) {
+    //   score += 25; 
+    // }
+
 
     // Add the move to the list along with its score
     scoredMoves.emplace_back(move, score);
@@ -142,6 +170,17 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
   for (const auto& [move, score] : scoredMoves) {
     moves.add(move);
   }
+}
+
+
+// Evaluation related functions
+bool Engine::hasCastled(Color color) {
+  Square kingSq = board.pieces(PieceType::KING, color).lsb();
+
+  if (color == Color::WHITE)
+    return kingSq.index() == 6 || kingSq.index() == 2;  // G1 or C1
+  else
+    return kingSq.index() == 62 || kingSq.index() == 58;  // G8 or C8
 }
 
 int Engine::evaluate(int ply) {
@@ -214,6 +253,12 @@ int Engine::evaluate(int ply) {
     eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
   }
 
+  // kings should prefer castling
+  if (!isEndgame) {
+    if (hasCastled(Color::WHITE)) eval += 30;
+    if (hasCastled(Color::BLACK)) eval -= 30;
+  }
+
   return eval;
 }
 
@@ -230,7 +275,6 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   int originalAlpha = alpha;
 
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove)) {
-    std::cout<<"TTHits: \n";
     return ttScore;
   }
 
@@ -369,6 +413,8 @@ std::string Engine::getBestMove(int depth) {
     std::cout << move << " ";
   }
   std::cout<<"\n";
+
+  printTTStats();
 
   return uci::moveToUci(bestMove);
 }
