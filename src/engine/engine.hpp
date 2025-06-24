@@ -7,6 +7,7 @@
 #include "../chess-library/include/chess.hpp"
 
 constexpr int MATE_SCORE = 1000000;
+constexpr int MATE_THRESHHOLD = 100;
 constexpr int DRAW_SCORE = 0;
 
 using namespace chess;

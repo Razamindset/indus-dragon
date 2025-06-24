@@ -51,10 +51,12 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
     // If the prev value was stored at Mate_score-3 but if we are 1 step closer now
     // The tt will still read the old value but we need to deal with it using the depth
     // * This was the issue i could not identify in my pawnstar engine that was causing issues.
+    // The goal of the TT is to store a mate score such that when retrieved,
+    // it correctly reflects the mate distance from the current node where it's being retrieved.
     int adjustedScore = entry.score;
 
     // Using 1000 points as threshold as in the getBestMovefunction();
-    if(entry.score > MATE_SCORE - 1000){
+    if(entry.score > MATE_SCORE - MATE_THRESHHOLD){
       adjustedScore = entry.score - (entry.depth - depth);
     }else if(entry.score < -MATE_SCORE + 1000){
       adjustedScore = entry.score + (entry.depth - depth);
@@ -64,15 +66,15 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
     // The score is with in the window or
     // The score can cause an alpha or beta cutoff.
     if(entry.type == TTEntryType::EXACT){
-      score = entry.score;
+      score = adjustedScore;
       return true;
     }
     else if(entry.type == TTEntryType::LOWER && entry.score >= beta){ 
-      score = entry.score;
+      score = adjustedScore;
       return true;
     }
     else if(entry.type == TTEntryType::UPPER && entry.score <= alpha){
-      score = entry.score;
+      score = adjustedScore;
       return true;
     }
   }
@@ -83,9 +85,6 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
 // Store an entry in the transposition table
 void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove){
   // Todo Implement a Find and replacement scheme for old enteries
-  // The goal of the TT is to store a mate score such that when retrieved,
-  // it correctly reflects the mate distance from the current node where it's being retrieved.
-
   TTEntry entry;
   entry.bestMove = bestMove;
   entry.score = score;
@@ -294,6 +293,8 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     entryType = TTEntryType::EXACT; // Exact score within alpha-beta window
   }
 
+  // storeTT(boardhash, depth, bestScore, entryType, bestMove);
+
   return bestScore;
 }
 
@@ -339,7 +340,7 @@ std::string Engine::getBestMove(int depth) {
 
   std::cout << "info depth "<< depth << " nodes " << positionsSearched << " score ";
 
-  if (std::abs(bestEval) > (MATE_SCORE - 100)) { 
+  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) { 
     int movesToMate;
     if (bestEval > 0) { // White is mating
       movesToMate = MATE_SCORE - bestEval;
