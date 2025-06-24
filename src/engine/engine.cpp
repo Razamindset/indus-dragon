@@ -229,6 +229,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   int originalAlpha = alpha;
 
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove)) {
+    std::cout<<"TTHits: \n";
     return ttScore;
   }
 
@@ -241,7 +242,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   int bestScore;
 
   if (isMaximizing) {
-    int bestScore = -MATE_SCORE;
+    bestScore = -MATE_SCORE;
 
     for (Move move : moves) {
       board.makeMove(move);
@@ -262,7 +263,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     }
 
   } else {
-    int bestScore = MATE_SCORE;
+    bestScore = MATE_SCORE;
 
     for (Move move : moves) {
       board.makeMove(move);
@@ -317,6 +318,7 @@ std::string Engine::getBestMove(int depth) {
     board.makeMove(move);
     std::vector<Move> MovePv;
     int eval = minmax(depth - 1, -MATE_SCORE, MATE_SCORE, !isMaximizing, MovePv, 1);
+    // std::cout<<"Move: "<<move<<" "<<eval;
     board.unmakeMove(move);
 
     if (isMaximizing && eval > bestEval) {
