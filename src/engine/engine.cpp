@@ -109,7 +109,7 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
     // Priorotize ttMove and break after putthing on top
     if(ttMove != Move::NULL_MOVE && move == ttMove){
       scoredMoves.emplace_back(move, 1000);
-      break;
+      continue;
     }
 
     // Find a good way to check for checks can't use board.makemove()
