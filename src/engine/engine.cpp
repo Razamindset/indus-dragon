@@ -31,6 +31,61 @@ int Engine::getPieceValue(Piece piece) {
 }
 
 
+bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove){
+
+  auto it = transpositionTable.find(hash);
+
+  if(it == transpositionTable.end()){
+    return false;
+  }
+
+  const TTEntry entry = it->second;
+
+  ttHits++;
+
+  // Check if the depth is acceptable
+  if(entry.depth >= depth){
+    // Even if no cuttoffs we can try this move maybe still the best one
+    bestMove = entry.bestMove;
+
+    //* Check if:
+    // The score is with in the window or
+    // The score can cause an alpha or beta cutoff.
+    if(entry.type == TTEntryType::EXACT){
+      score = entry.score;
+      return true;
+    }
+    else if(entry.type == TTEntryType::LOWER && entry.score >= beta){ 
+      score = entry.score;
+      return true;
+    }
+    else if(entry.type == TTEntryType::UPPER && entry.score <= alpha){
+      score = entry.score;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Store an entry in the transposition table
+void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove){
+  // Todo Implement a Find and replacement scheme for old enteries
+
+  TTEntry entry;
+  entry.bestMove = bestMove;
+  entry.score = score;
+  entry.hash = hash;
+  entry.type = type;
+  entry.depth = depth;
+
+  transpositionTable[hash] = entry;
+
+}
+
+
+
+
 /* Order moves based on their priority */
 void Engine::orderMoves(Movelist &moves){
   std::vector<std::pair<Move, int>> scoredMoves;
@@ -146,13 +201,20 @@ int Engine::evaluate(int ply) {
 }
 
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
+  positionsSearched++;
+  ply++;
 
   if (depth == 0 || isGameOver()) {
     return evaluate(ply);
   }
 
-  positionsSearched++;
-  ply+=1;
+  uint64_t boardhash = board.hash();
+  int ttScore = 0;
+  Move ttMove = Move::NULL_MOVE;
+
+  if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove)) {
+    return ttScore;
+  }
 
   Movelist moves;
   movegen::legalmoves(moves, board);
