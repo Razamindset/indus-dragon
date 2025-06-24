@@ -47,7 +47,7 @@ class Engine {
   int minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply);
 
   // Move ordering and heuristics
-  void orderMoves(Movelist &moves);
+  void orderMoves(Movelist &moves, Move ttMove);
 
  public:
   void setPosition(const std::string& fen);

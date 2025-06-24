@@ -54,7 +54,7 @@ class UCIAdapter {
   }
 
   void handleUCI() {
-    std::cout << "id name Pawnstar" << std::endl;
+    std::cout << "id name Indus Dragon" << std::endl;
     std::cout << "id author Razamindset" << std::endl;
 
     // Output available options if any

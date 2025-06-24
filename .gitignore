@@ -31,6 +31,8 @@ cmake-build-*/
 *.out
 *.app
 pawnstar
+indus-dragon
+indus-dragon.o
 
 # CMake
 CMakeCache.txt

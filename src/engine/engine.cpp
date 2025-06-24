@@ -40,13 +40,25 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
   }
 
   const TTEntry entry = it->second;
-
   ttHits++;
+
+  // Always extract the best move for move ordering even if the entry is unusable
+  bestMove = entry.bestMove;
 
   // Check if the depth is acceptable
   if(entry.depth >= depth){
-    // Even if no cuttoffs we can try this move maybe still the best one
-    bestMove = entry.bestMove;
+    //! If dealing with mate the already scored valued can cause issues
+    // If the prev value was stored at Mate_score-3 but if we are 1 step closer now
+    // The tt will still read the old value but we need to deal with it using the depth
+    // * This was the issue i could not identify in my pawnstar engine that was causing issues.
+    int adjustedScore = entry.score;
+
+    // Using 1000 points as threshold as in the getBestMovefunction();
+    if(entry.score > MATE_SCORE - 1000){
+      adjustedScore = entry.score - (entry.depth - depth);
+    }else if(entry.score < -MATE_SCORE + 1000){
+      adjustedScore = entry.score + (entry.depth - depth);
+    }
 
     //* Check if:
     // The score is with in the window or
@@ -71,6 +83,8 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
 // Store an entry in the transposition table
 void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove){
   // Todo Implement a Find and replacement scheme for old enteries
+  // The goal of the TT is to store a mate score such that when retrieved,
+  // it correctly reflects the mate distance from the current node where it's being retrieved.
 
   TTEntry entry;
   entry.bestMove = bestMove;
@@ -83,11 +97,8 @@ void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move
 
 }
 
-
-
-
 /* Order moves based on their priority */
-void Engine::orderMoves(Movelist &moves){
+void Engine::orderMoves(Movelist &moves, Move ttMove){
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
 
@@ -95,6 +106,12 @@ void Engine::orderMoves(Movelist &moves){
   for(Move move:moves){
     int score = 0;
     
+    // Priorotize ttMove and break after putthing on top
+    if(ttMove != Move::NULL_MOVE && move == ttMove){
+      scoredMoves.emplace_back(move, 1000);
+      break;
+    }
+
     // Find a good way to check for checks can't use board.makemove()
 
     // Prioritize captures using MVV-LVA
@@ -202,7 +219,6 @@ int Engine::evaluate(int ply) {
 
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
   positionsSearched++;
-  ply++;
 
   if (depth == 0 || isGameOver()) {
     return evaluate(ply);
@@ -211,6 +227,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   uint64_t boardhash = board.hash();
   int ttScore = 0;
   Move ttMove = Move::NULL_MOVE;
+  int originalAlpha = alpha;
 
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove)) {
     return ttScore;
@@ -218,55 +235,66 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
   Movelist moves;
   movegen::legalmoves(moves, board);
-  orderMoves(moves);
+
+  orderMoves(moves, ttMove);
+
   Move bestMove = Move::NULL_MOVE;
+  int bestScore;
 
   if (isMaximizing) {
-    int maxEval = -MATE_SCORE;
+    int bestScore = -MATE_SCORE;
 
     for (Move move : moves) {
       board.makeMove(move);
       std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, false, childPv, ply);
+      int eval = minmax(depth - 1, alpha, beta, false, childPv, ply+1);
       board.unmakeMove(move);
 
-      if (eval > maxEval) {
-        maxEval = eval;
+      if (eval > bestScore) {
+        bestScore = eval;
         bestMove = move;
         pv = {move};
         pv.insert(pv.end(), childPv.begin(), childPv.end());
       }
 
-      alpha = std::max(maxEval, alpha);
+      alpha = std::max(bestScore, alpha);
 
       if (beta <= alpha) break;
     }
-
-    return maxEval;
 
   } else {
-    int minEval = MATE_SCORE;
+    int bestScore = MATE_SCORE;
 
     for (Move move : moves) {
       board.makeMove(move);
       std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, true, childPv, ply);
+      int eval = minmax(depth - 1, alpha, beta, true, childPv, ply+1);
       board.unmakeMove(move);
 
-      if (eval < minEval) {
-        minEval = eval;
+      if (eval < bestScore) {
+        bestScore = eval;
         bestMove = move;
         pv = {move};
         pv.insert(pv.end(), childPv.begin(), childPv.end());
       }
 
-      beta = std::min(minEval, beta);
+      beta = std::min(bestScore, beta);
 
       if (beta <= alpha) break;
     }
-
-    return minEval;
   }
+
+  // Store the entries in the transposition table
+  TTEntryType entryType;
+  if (bestScore <= originalAlpha) {
+    entryType = TTEntryType::UPPER; // All moves were <= alpha (fail-low)
+  } else if (bestScore >= beta) {
+    entryType = TTEntryType::LOWER; // bestScore >= beta (fail-high)
+  }else {
+    entryType = TTEntryType::EXACT; // Exact score within alpha-beta window
+  }
+
+  return bestScore;
 }
 
 std::string Engine::getBestMove(int depth) {
@@ -276,7 +304,7 @@ std::string Engine::getBestMove(int depth) {
 
   Movelist moves;
   movegen::legalmoves(moves, board);
-  orderMoves(moves);
+  orderMoves(moves, Move::NULL_MOVE);
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE); 
 
