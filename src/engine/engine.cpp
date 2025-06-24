@@ -32,6 +32,7 @@ int Engine::getPieceValue(Piece piece) {
 
 
 bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove){
+  //! The TT stored mate scores are having bugss 
 
   auto it = transpositionTable.find(hash);
 
@@ -294,7 +295,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     entryType = TTEntryType::EXACT; // Exact score within alpha-beta window
   }
 
-  // storeTT(boardhash, depth, bestScore, entryType, bestMove);
+  storeTT(boardhash, depth, bestScore, entryType, bestMove);
 
   return bestScore;
 }
