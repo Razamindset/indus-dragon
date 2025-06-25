@@ -12,6 +12,9 @@ constexpr int DRAW_SCORE = 0;
 // Around 1 million entries for 64 bites each
 constexpr size_t MAX_TT_ENTRIES = 1 << 20;
 
+// MAX search depth
+constexpr int MAX_SEARCH_DEPTH = 64; 
+
 using namespace chess;
 
 
@@ -35,7 +38,7 @@ class Engine {
  private:
   Board board;
   int getPieceValue(Piece piece);
-  int positionsSearched = 0;
+  long long positionsSearched = 0;
 
   // Transposition table
   std::unordered_map<uint64_t, TTEntry> transpositionTable;
@@ -48,6 +51,9 @@ class Engine {
   // Evaluation
   int evaluate(int ply);
   bool hasCastled(Color color);
+  inline int manhattanDistance(Square s1, Square s2) {
+    return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
+  }
 
   // Search
   int minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply);

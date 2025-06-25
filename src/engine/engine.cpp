@@ -252,9 +252,38 @@ int Engine::evaluate(int ply) {
     if (hasCastled(Color::BLACK)) eval -= 50;
   }
 
+  if(isEndgame){
+    Square whiteKingSq = board.kingSq(Color::WHITE);
+    Square blackKingSq = board.kingSq(Color::BLACK);
+
+    int distance = manhattanDistance(whiteKingSq, blackKingSq);
+    eval += (14 - distance) * 6;
+
+    int whiteKingFile = whiteKingSq.file();
+    int whiteKingRank = whiteKingSq.rank();
+
+    int blackKingFile = blackKingSq.file();
+    int blackKingRank = blackKingSq.rank();
+
+     // Higher bonus for corner squares
+    if ((blackKingFile == 0 || blackKingFile == 7) && (blackKingRank == 0 || blackKingRank == 7)) {
+      eval += 100;
+    }
+    if ((whiteKingFile == 0 || whiteKingFile == 7) && (whiteKingRank == 0 || whiteKingRank == 7)) {
+      eval -= 100;
+    }
+
+    // Bonus for being on the edges
+    if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 || blackKingRank == 7) {
+      eval += 100;
+    }
+    if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 || whiteKingRank == 7) {
+      eval -= 100;
+    }
+  }
+
   return eval;
 }
-
 
 // Search related functions
 int Engine::quiesce(int alpha, int beta, int ply){
@@ -332,7 +361,8 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   positionsSearched++;
 
   if(depth == 0){
-    return quiesce(alpha, beta, ply);
+    // return quiesce(alpha, beta, ply);
+    return evaluate(ply);
   }
 
   if (isGameOver()) {
