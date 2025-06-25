@@ -190,34 +190,61 @@ int Engine::evaluate(int ply) {
 
   int eval = 0;
 
-  //* Counting the pieces for now simply
-  constexpr int PAWN_VALUE = 100;
-  constexpr int KNIGHT_VALUE = 300;
-  constexpr int BISHOP_VALUE = 320;
-  constexpr int ROOK_VALUE = 500;
-  constexpr int QUEEN_VALUE = 900;
+  // Initialize all bitboards once
+  auto whitePawns = board.pieces(PieceType::PAWN, Color::WHITE);
+  auto blackPawns = board.pieces(PieceType::PAWN, Color::BLACK);
+  auto whiteKnights = board.pieces(PieceType::KNIGHT, Color::WHITE);
+  auto blackKnights = board.pieces(PieceType::KNIGHT, Color::BLACK);
+  auto whiteBishops = board.pieces(PieceType::BISHOP, Color::WHITE);
+  auto blackBishops = board.pieces(PieceType::BISHOP, Color::BLACK);
+  auto whiteRooks = board.pieces(PieceType::ROOK, Color::WHITE);
+  auto blackRooks = board.pieces(PieceType::ROOK, Color::BLACK);
+  auto whiteQueens = board.pieces(PieceType::QUEEN, Color::WHITE);
+  auto blackQueens = board.pieces(PieceType::QUEEN, Color::BLACK);
 
-  auto countMaterial = [&](Color color) {
-    return board.pieces(PieceType::PAWN, color).count() * PAWN_VALUE +
-           board.pieces(PieceType::KNIGHT, color).count() * KNIGHT_VALUE +
-           board.pieces(PieceType::BISHOP, color).count() * BISHOP_VALUE +
-           board.pieces(PieceType::ROOK, color).count() * ROOK_VALUE +
-           board.pieces(PieceType::QUEEN, color).count() * QUEEN_VALUE;
-  };
+  // Count material using the initialized bitboards
+  int whiteMaterial = whitePawns.count() * PAWN_VALUE +
+                      whiteKnights.count() * KNIGHT_VALUE +
+                      whiteBishops.count() * BISHOP_VALUE +
+                      whiteRooks.count() * ROOK_VALUE +
+                      whiteQueens.count() * QUEEN_VALUE;
 
-  eval += countMaterial(Color::WHITE) - countMaterial(Color::BLACK);
+  int blackMaterial = blackPawns.count() * PAWN_VALUE +
+                      blackKnights.count() * KNIGHT_VALUE +
+                      blackBishops.count() * BISHOP_VALUE +
+                      blackRooks.count() * ROOK_VALUE +
+                      blackQueens.count() * QUEEN_VALUE;
+
+  eval += whiteMaterial - blackMaterial;
+
+  // Better endgame detection based on total material
+  int totalMaterial = whiteMaterial + blackMaterial;
+  bool isEndgame = totalMaterial < 2500; // Endgame when less than ~25 points of material total
+  bool isOpening = totalMaterial > 6000; // Opening when more than ~60 points of material total
 
 
-  // For now endgame if queens are off the board
-  bool isEndgame = (board.pieces(PieceType::QUEEN, Color::WHITE).count()  + board.pieces(PieceType::QUEEN, Color::BLACK).count() == 0);
+  // Castling bonus (opening/middlegame only)
+  if (!isEndgame) {
+    if (hasCastled(Color::WHITE)) eval += 50;
+    if (hasCastled(Color::BLACK)) eval -= 50;
+  }
 
-  // Add values from piece square tables
+  evaluatePST(eval, isEndgame);
+
+  evaluatePawns(eval, whitePawns, blackPawns);
+
+  if(isEndgame){
+    evaluateKingEndgameScore(eval);
+  }
+   
+}
+
+// Add values from piece square tables
+void Engine::evaluatePST(int &eval, bool isEndgame){
   for (Square sq = 0; sq < 64; sq++) {
     Piece piece = board.at(sq);
     if (piece.type() == PieceType::NONE) continue;
 
-    // This loop starts priniting from white's perspective 
-    // White last rook gets an index of 0 which is mirrored so we use the mirrored function for white only and for black we just get value as it is. The only differense is for white +value and for black -ive value 
     int index = (piece.color() == Color::WHITE) ? mirrorIndex(sq.index()) : sq.index();
     int squareValue = 0;
 
@@ -238,51 +265,109 @@ int Engine::evaluate(int ply) {
         squareValue = QUEEN_TABLE[index];
         break;
       case KING:
-        squareValue =
-            isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+        squareValue = isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
         break;
     }
 
     eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
   }
+}
 
-  // kings should prefer castling
-  if (!isEndgame) {
-    if (hasCastled(Color::WHITE)) eval += 50;
-    if (hasCastled(Color::BLACK)) eval -= 50;
-  }
+// Calculate the pawns evaluation
+void Engine::evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const chess::Bitboard& blackPawns){
+  // 1. Doubled pawns penalty
+  for (int file = 0; file < 8; file++) {
+    int whitePawnsOnFile = 0;
+    int blackPawnsOnFile = 0;
+    
+    // Count pawns on each file
+    chess::Bitboard fileMask = chess::Bitboard(0x0101010101010101ULL << file);
+    whitePawnsOnFile = (whitePawns & fileMask).count();
+    blackPawnsOnFile = (blackPawns & fileMask).count();
 
-  if(isEndgame){
-    Square whiteKingSq = board.kingSq(Color::WHITE);
-    Square blackKingSq = board.kingSq(Color::BLACK);
-
-    int distance = manhattanDistance(whiteKingSq, blackKingSq);
-    eval += (14 - distance) * 6;
-
-    int whiteKingFile = whiteKingSq.file();
-    int whiteKingRank = whiteKingSq.rank();
-
-    int blackKingFile = blackKingSq.file();
-    int blackKingRank = blackKingSq.rank();
-
-     // Higher bonus for corner squares
-    if ((blackKingFile == 0 || blackKingFile == 7) && (blackKingRank == 0 || blackKingRank == 7)) {
-      eval += 100;
+    // std::cout<<whitePawnsOnFile<<" "<<blackPawnsOnFile<<"\n";
+    
+    // Penalty for doubled pawns
+    if (whitePawnsOnFile > 1) {
+      eval -= 20 * (whitePawnsOnFile - 1);
     }
-    if ((whiteKingFile == 0 || whiteKingFile == 7) && (whiteKingRank == 0 || whiteKingRank == 7)) {
-      eval -= 100;
-    }
-
-    // Bonus for being on the edges
-    if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 || blackKingRank == 7) {
-      eval += 100;
-    }
-    if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 || whiteKingRank == 7) {
-      eval -= 100;
+    if (blackPawnsOnFile > 1) {
+      eval += 20 * (blackPawnsOnFile - 1);
     }
   }
 
-  return eval;
+  // 2. Isolated pawns penalty
+  for (int file = 0; file < 8; file++) {
+    // Check if there are pawns on this file
+    chess::Bitboard fileMask = chess::Bitboard(0x0101010101010101ULL << file);
+    
+    if ((whitePawns & fileMask).count() > 0) {
+      // Check adjacent files for white pawns
+      bool hasSupport = false;
+      if (file > 0) {
+        chess::Bitboard leftFile = chess::Bitboard(0x0101010101010101ULL << (file - 1));
+        if ((whitePawns & leftFile).count() > 0) hasSupport = true;
+      }
+      if (file < 7) {
+        chess::Bitboard rightFile = chess::Bitboard(0x0101010101010101ULL << (file + 1));
+        if ((whitePawns & rightFile).count() > 0) hasSupport = true;
+      }
+      
+      if (!hasSupport) {
+        eval -= 15 * (whitePawns & fileMask).count(); // Penalty for each isolated pawn
+      }
+    }
+    
+    if ((blackPawns & fileMask).count() > 0) {
+      // Check adjacent files for black pawns
+      bool hasSupport = false;
+      if (file > 0) {
+        chess::Bitboard leftFile = chess::Bitboard(0x0101010101010101ULL << (file - 1));
+        if ((blackPawns & leftFile).count() > 0) hasSupport = true;
+      }
+      if (file < 7) {
+        chess::Bitboard rightFile = chess::Bitboard(0x0101010101010101ULL << (file + 1));
+        if ((blackPawns & rightFile).count() > 0) hasSupport = true;
+      }
+      
+      if (!hasSupport) {
+        eval += 15 * (blackPawns & fileMask).count(); // Penalty for each isolated pawn
+      }
+    }
+  }
+
+  // Check if any passed pawns and award accordingly
+}
+
+// Calculate King endgame score
+void Engine::evaluateKingEndgameScore(int& eval){
+  Square whiteKingSq = board.kingSq(Color::WHITE);
+  Square blackKingSq = board.kingSq(Color::BLACK);
+
+  int distance = manhattanDistance(whiteKingSq, blackKingSq);
+  eval += (14 - distance) * 6;
+
+  int whiteKingFile = whiteKingSq.file();
+  int whiteKingRank = whiteKingSq.rank();
+
+  int blackKingFile = blackKingSq.file();
+  int blackKingRank = blackKingSq.rank();
+
+  // Higher bonus for corner squares
+  if ((blackKingFile == 0 || blackKingFile == 7) && (blackKingRank == 0 || blackKingRank == 7)) {
+    eval += 100;
+  }
+  if ((whiteKingFile == 0 || whiteKingFile == 7) && (whiteKingRank == 0 || whiteKingRank == 7)) {
+    eval -= 100;
+  }
+
+  // Bonus for being on the edges
+  if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 || blackKingRank == 7) {
+    eval += 100;
+  }
+  if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 || whiteKingRank == 7) {
+    eval -= 100;
+  }
 }
 
 // Search related functions
@@ -448,6 +533,9 @@ std::string Engine::getBestMove(int depth) {
   if (isGameOver()) {
     return "";
   }
+
+  // std::cout<<evaluate(3)<<"\n";
+  // return "e2e4";
 
   Movelist moves;
   movegen::legalmoves(moves, board);

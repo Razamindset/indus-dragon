@@ -15,6 +15,13 @@ constexpr size_t MAX_TT_ENTRIES = 1 << 20;
 // MAX search depth
 constexpr int MAX_SEARCH_DEPTH = 64; 
 
+// Material values
+constexpr int PAWN_VALUE = 100;
+constexpr int KNIGHT_VALUE = 300;
+constexpr int BISHOP_VALUE = 320;
+constexpr int ROOK_VALUE = 500;
+constexpr int QUEEN_VALUE = 900;
+
 using namespace chess;
 
 
@@ -50,6 +57,9 @@ class Engine {
 
   // Evaluation
   int evaluate(int ply);
+  void evaluatePST(int& eval, bool isEndgame);
+  void evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const chess::Bitboard& blackPawns);
+  void evaluateKingEndgameScore(int& eval);
   bool hasCastled(Color color);
   inline int manhattanDistance(Square s1, Square s2) {
     return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
