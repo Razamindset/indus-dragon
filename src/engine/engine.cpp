@@ -165,7 +165,6 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
   }
 }
 
-
 // Evaluation related functions
 bool Engine::hasCastled(Color color) {
   Square kingSq = board.pieces(PieceType::KING, color).lsb();
