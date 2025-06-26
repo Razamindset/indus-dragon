@@ -145,7 +145,6 @@ std::string Engine::getBestMove(int maxDepth) {
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
     int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
-    Move currentBestMove = Move::NULL_MOVE;
     std::vector<Move> currentBestLine;
 
     // We don't need to generate moves at the root, minmax will do it.

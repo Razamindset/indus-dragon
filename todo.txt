@@ -1,5 +1,5 @@
-Add a simple tt 
 Add killer moves
 Add Quiscience search
-Add iterative deepening 
 Improve Uci Compatibility.
+Add pruning techniques and stuff
+Add time management
