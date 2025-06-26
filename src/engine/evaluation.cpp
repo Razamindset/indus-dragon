@@ -77,11 +77,11 @@ int Engine::evaluate(int ply) {
 
 // Add values from piece square tables
 void Engine::evaluatePST(int &eval, bool isEndgame){
-  for (Square sq = 0; sq < 64; sq++) {
-    Piece piece = board.at(sq);
+  for (int sq = 0; sq < 64; sq++) {
+    Piece piece = board.at(Square(sq));
     if (piece.type() == PieceType::NONE) continue;
 
-    int index = (piece.color() == Color::WHITE) ? mirrorIndex(sq.index()) : sq.index();
+    int index = (piece.color() == Color::BLACK) ? mirrorIndex(sq) : sq;
     int squareValue = 0;
 
     switch (piece.type()) {
