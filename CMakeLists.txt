@@ -14,6 +14,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(SOURCES
     src/main.cpp
     src/engine/engine.cpp
+    src/engine/evaluation.cpp
+    src/engine/search.cpp
+    src/engine/tt.cpp
 )
 
 # Define header files
