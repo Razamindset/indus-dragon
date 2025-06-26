@@ -6,7 +6,6 @@
 
 #include "./engine/engine.hpp"
 
-//! Claude generated slappy code
 
 class UCIAdapter {
  private:
