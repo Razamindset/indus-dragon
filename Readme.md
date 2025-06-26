@@ -2,6 +2,13 @@
 
 Indus Dragon is a UCI chess engine written in C++ that uses the [chess-library](https://github.com/Disservin/chess-library) for board operations and move validation.
 
+## Play The engine
+
+You can play the engine on lichess. If it is online.
+```sh
+https://lichess.org/@/indusdragon
+```
+
 ## Building the Project
 
 ### Prerequisites
@@ -61,3 +68,4 @@ Indus Dragon uses:
 - Techniques and algorithms from [Chess Programming Wiki](https://www.chessprogramming.org)
 
 Stay tuned for updates!
+
