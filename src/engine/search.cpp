@@ -133,76 +133,73 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   return bestScore;
 }
 
-std::string Engine::getBestMove(int depth) {
+std::string Engine::getBestMove(int maxDepth) {
   if (isGameOver()) {
     return "";
   }
 
-  Movelist moves;
-  movegen::legalmoves(moves, board);
-  orderMoves(moves, Move::NULL_MOVE);
-
-  bool isMaximizing = (board.sideToMove() == Color::WHITE); 
-
-  int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
+  bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
 
-  for (Move move : moves) {
-    board.makeMove(move);
-    std::vector<Move> MovePv;
-    int eval = minmax(depth - 1, -MATE_SCORE, MATE_SCORE, !isMaximizing, MovePv, 1);
-    board.unmakeMove(move);
+  // Iterative Deepening Loop
+  for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
+    int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
+    Move currentBestMove = Move::NULL_MOVE;
+    std::vector<Move> currentBestLine;
 
-    if (isMaximizing && eval > bestEval) {
-      bestEval = eval;
-      bestMove = move;
-      bestLine = {move};
-      bestLine.insert(bestLine.end(), MovePv.begin(), MovePv.end());
+    // We don't need to generate moves at the root, minmax will do it.
+    // The best move from the previous iteration will be prioritized by the TT.
+    bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
+
+    // After the search at currentDepth is complete, update our overall best move.
+    bestMove = currentBestLine.front();
+    bestLine = currentBestLine;
+
+    // Print UCI info for the completed depth
+    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " score ";
+
+    if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
+      int movesToMate;
+      if (bestEval > 0) { // White is mating
+        movesToMate = MATE_SCORE - bestEval;
+      } else {
+        movesToMate = MATE_SCORE + bestEval;
+      }
+      int fullMovesToMate = (movesToMate + 1) / 2;
+
+      // Perspective based mate and eval scores
+      if ((board.sideToMove() == Color::BLACK && bestEval > 0) ||
+          (board.sideToMove() == Color::WHITE && bestEval < 0)) {
+        fullMovesToMate = -fullMovesToMate;
+      }
+      std::cout << "mate " << fullMovesToMate << " pv ";
+    } else {
+      if (board.sideToMove() == Color::BLACK) {
+        bestEval = -bestEval;
+      }
+      std::cout << "cp " << bestEval << " pv ";
     }
-    if (!isMaximizing && eval < bestEval) {
-      bestEval = eval;
-      bestMove = move;
-      bestLine = {move};
-      bestLine.insert(bestLine.end(), MovePv.begin(), MovePv.end());
+
+    for (const auto& move : bestLine) {
+      std::cout << move << " ";
     }
+    std::cout << "\n";
   }
 
   if (bestMove == Move::NULL_MOVE) {
-    return "";
-  }
-
-
-  std::cout << "info depth "<< depth << " nodes " << positionsSearched << " score ";
-
-  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) { 
-    int movesToMate;
-    if (bestEval > 0) { // White is mating
-      movesToMate = MATE_SCORE - bestEval;
-    } else { 
-      movesToMate = MATE_SCORE + bestEval;
+    // This should ideally not happen if there are legal moves.
+    // As a fallback, grab the first legal move.
+    Movelist moves;
+    movegen::legalmoves(moves, board);
+    if (!moves.empty()) {
+        bestMove = moves[0];
     }
-    int fullMovesToMate = (movesToMate + 1) / 2;
-
-    // Perspective based mate and eval socores
-    if((board.sideToMove() == Color::BLACK && bestEval >0 )||
-       (board.sideToMove() == Color::WHITE && bestEval <0)){
-      fullMovesToMate = -fullMovesToMate;
+    else {
+        return "";
     }
-    std::cout << "mate " << fullMovesToMate << " pv ";
-  } else {
-     if(board.sideToMove() == Color::BLACK){
-      bestEval = - bestEval;
-    }
-    std::cout << "cp "<< bestEval << " pv ";
   }
-
-  for (Move move : bestLine) {
-    std::cout << move << " ";
-  }
-  std::cout<<"\n";
 
   // printTTStats();
-
   return uci::moveToUci(bestMove);
 }
