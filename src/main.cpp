@@ -104,7 +104,7 @@ class UCIAdapter {
 
   void handleGo() {
     // Simply get the best move without time controls
-    std::string bestMove = engine->getBestMove(4);
+    std::string bestMove = engine->getBestMove(5);
     std::cout << "bestmove " << bestMove << std::endl;
   }
 
