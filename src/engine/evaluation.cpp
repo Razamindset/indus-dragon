@@ -109,70 +109,77 @@ void Engine::evaluatePST(int &eval, bool isEndgame){
   }
 }
 
-// Calculate the pawns evaluation
+//! This function is Ai generated I don't want to get stuck in bitboards for now. I hope it works
 void Engine::evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const chess::Bitboard& blackPawns){
-  // 1. Doubled pawns penalty
-  for (int file = 0; file < 8; file++) {
-    int whitePawnsOnFile = 0;
-    int blackPawnsOnFile = 0;
-    
-    // Count pawns on each file
-    chess::Bitboard fileMask = chess::Bitboard(0x0101010101010101ULL << file);
-    whitePawnsOnFile = (whitePawns & fileMask).count();
-    blackPawnsOnFile = (blackPawns & fileMask).count();
+  chess::Bitboard fileBB;
 
-    
-    
-    // Penalty for doubled pawns
-    if (whitePawnsOnFile > 1) {
-      eval -= 20 * (whitePawnsOnFile - 1);
-    }
-    if (blackPawnsOnFile > 1) {
-      eval += 20 * (blackPawnsOnFile - 1);
-    }
+  for (int file = 0; file < 8; ++file) {
+      fileBB = chess::Bitboard(0x0101010101010101ULL << file);
+
+      chess::Bitboard whitePawnsOnFile = whitePawns & fileBB;
+      chess::Bitboard blackPawnsOnFile = blackPawns & fileBB;
+      int whitePawnsOnFileCount = whitePawnsOnFile.count();
+      int blackPawnsOnFileCount = blackPawnsOnFile.count();
+
+      // 1. Doubled pawns penalty
+      if (whitePawnsOnFileCount > 1) {
+          eval -= 20 * (whitePawnsOnFileCount - 1);
+      }
+      if (blackPawnsOnFileCount > 1) {
+          eval += 20 * (blackPawnsOnFileCount - 1);
+      }
+
+      // 2. Isolated pawns penalty
+      chess::Bitboard adjacentFiles = 0ULL;
+      if (file > 0) adjacentFiles |= chess::Bitboard(0x0101010101010101ULL << (file - 1));
+      if (file < 7) adjacentFiles |= chess::Bitboard(0x0101010101010101ULL << (file + 1));
+
+      if (whitePawnsOnFileCount > 0 && (whitePawns & adjacentFiles).empty()) {
+          eval -= 15 * whitePawnsOnFileCount;
+      }
+      if (blackPawnsOnFileCount > 0 && (blackPawns & adjacentFiles).empty()) {
+          eval += 15 * blackPawnsOnFileCount;
+      }
+
+      // 3. Passed pawns bonus
+      while(whitePawnsOnFile) {
+          Square sq = whitePawnsOnFile.pop();
+          if (isPassedPawn(sq, Color::WHITE, blackPawns)) {
+              eval += 20 * (sq.rank() - 1);
+          }
+      }
+
+      while(blackPawnsOnFile) {
+          Square sq = blackPawnsOnFile.pop();
+          if (isPassedPawn(sq, Color::BLACK, whitePawns)) {
+              eval -= 20 * (6 - sq.rank());
+          }
+      }
   }
+}
 
-  // 2. Isolated pawns penalty
-  for (int file = 0; file < 8; file++) {
-    // Check if there are pawns on this file
-    chess::Bitboard fileMask = chess::Bitboard(0x0101010101010101ULL << file);
-    
-    if ((whitePawns & fileMask).count() > 0) {
-      // Check adjacent files for white pawns
-      bool hasSupport = false;
-      if (file > 0) {
-        chess::Bitboard leftFile = chess::Bitboard(0x0101010101010101ULL << (file - 1));
-        if ((whitePawns & leftFile).count() > 0) hasSupport = true;
-      }
-      if (file < 7) {
-        chess::Bitboard rightFile = chess::Bitboard(0x0101010101010101ULL << (file + 1));
-        if ((whitePawns & rightFile).count() > 0) hasSupport = true;
-      }
-      
-      if (!hasSupport) {
-        eval -= 15 * (whitePawns & fileMask).count(); // Penalty for each isolated pawn
-      }
-    }
-    
-    if ((blackPawns & fileMask).count() > 0) {
-      // Check adjacent files for black pawns
-      bool hasSupport = false;
-      if (file > 0) {
-        chess::Bitboard leftFile = chess::Bitboard(0x0101010101010101ULL << (file - 1));
-        if ((blackPawns & leftFile).count() > 0) hasSupport = true;
-      }
-      if (file < 7) {
-        chess::Bitboard rightFile = chess::Bitboard(0x0101010101010101ULL << (file + 1));
-        if ((blackPawns & rightFile).count() > 0) hasSupport = true;
-      }
-      
-      if (!hasSupport) {
-        eval += 15 * (blackPawns & fileMask).count(); // Penalty for each isolated pawn
-      }
-    }
-  }
+//! This function is Ai generated
+bool Engine::isPassedPawn(Square sq, Color color, const chess::Bitboard& opponentPawns) {
+    int file = sq.file();
+    int rank = sq.rank();
 
-  // Check if any passed pawns and award accordingly
+    // Create a bitmask for the files including the pawn's file and adjacent files
+    chess::Bitboard file_mask = chess::Bitboard(0x0101010101010101ULL << file);
+    if (file > 0) file_mask |= chess::Bitboard(0x0101010101010101ULL << (file - 1));
+    if (file < 7) file_mask |= chess::Bitboard(0x0101010101010101ULL << (file + 1));
+
+    // Create a bitmask for the ranks in front of the pawn
+    chess::Bitboard rank_mask = 0ULL;
+    if (color == Color::WHITE) {
+        // Ranks in front of a white pawn (rank + 1 to 7)
+        if (rank < 7) rank_mask = ~((1ULL << ((rank + 1) * 8)) - 1);
+    } else { // BLACK
+        // Ranks in front of a black pawn (rank - 1 to 0)
+        if (rank > 0) rank_mask = (1ULL << (rank * 8)) - 1;
+    }
+
+    // A pawn is passed if there are no opponent pawns in the path in front of it
+    return (opponentPawns & file_mask & rank_mask).empty();
 }
 
 // Calculate King endgame score

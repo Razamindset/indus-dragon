@@ -61,6 +61,7 @@ class Engine {
   void evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const chess::Bitboard& blackPawns);
   void evaluateKingEndgameScore(int& eval);
   bool hasCastled(Color color);
+  bool isPassedPawn(Square sq, Color color, const chess::Bitboard& pawns);
   inline int manhattanDistance(Square s1, Square s2) {
     return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
   }
