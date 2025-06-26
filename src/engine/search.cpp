@@ -51,87 +51,10 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
   }
 }
 
-// Search related functions
-int Engine::quiesce(int alpha, int beta, int ply){
-  positionsSearched++;
-    
-  const int MAX_QUIESCE_DEPTH = 16;
-  if (ply >= MAX_QUIESCE_DEPTH) {
-    return evaluate(ply);
-  }
-
-  if (isGameOver()) {
-    if (getGameOverReason() == GameResultReason::CHECKMATE){
-      return -MATE_SCORE + ply;
-    }
-    return DRAW_SCORE;
-  }
-
-  int standpat = evaluate(ply);
-
-  if (standpat >= beta)
-    return beta;
-    
-  const int DELTA_MARGIN = 900;
-  if (standpat + DELTA_MARGIN < alpha) {
-    return alpha;
-  }
-    
-  if (standpat > alpha)
-    alpha = standpat;
-    
-  // Generate all legal moves but filter more efficiently
-  Movelist moves;
-  movegen::legalmoves(moves, board);
-    
-  // Create a vector of only captures for better cache performance
-  std::vector<Move> goodCaptures;
-  goodCaptures.reserve(32); // Reserve space to avoid reallocations
-    
-  for (const Move& move : moves) {
-    if (!board.isCapture(move)) continue;
-        
-    // Quick SEE approximation - skip obviously bad captures
-    int victimValue = getPieceValue(board.at(move.to()));
-    int attackerValue = getPieceValue(board.at(move.from()));
-        
-    // Simple SEE: if victim value >= attacker value, it's likely good
-    if (victimValue >= attackerValue || victimValue >= 300) { // Always try knight+ captures
-      goodCaptures.push_back(move);
-    }
-  }
-    
-  // Sort good captures by MVV-LVA
-  std::sort(goodCaptures.begin(), goodCaptures.end(), [this](const Move& a, const Move& b) {
-    int victimA = getPieceValue(board.at(a.to()));
-    int victimB = getPieceValue(board.at(b.to()));
-      return victimA > victimB;
-  });
-    
-  for (const Move& move : goodCaptures) {
-    board.makeMove(move);
-    int score = -quiesce(-beta, -alpha, ply + 1);
-    board.unmakeMove(move);
-
-    if (score >= beta)
-      return beta;
-
-    if (score > alpha)
-      alpha = score;
-  }
-
-  return alpha;
-}
-
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
   positionsSearched++;
 
-  if(depth == 0){
-    // return quiesce(alpha, beta, ply);
-    return evaluate(ply);
-  }
-
-  if (isGameOver()) {
+  if(depth == 0 || isGameOver()){
     return evaluate(ply);
   }
 

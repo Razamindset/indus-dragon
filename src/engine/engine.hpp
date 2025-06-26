@@ -68,7 +68,6 @@ class Engine {
 
   // Search
   int minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply);
-  int quiesce(int alpha, int beta, int ply);
 
   // Move ordering and heuristics
   void orderMoves(Movelist &moves, Move ttMove);
