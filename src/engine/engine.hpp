@@ -53,7 +53,7 @@ class Engine {
   int ttCollisions = 0;  // Number of overwrites
   int ttStores = 0;      // Total stores
   void storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove);
-  bool probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove);
+  bool probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove, int ply);
 
   // Evaluation
   int evaluate(int ply);
@@ -68,6 +68,7 @@ class Engine {
 
   // Search
   int minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply);
+  int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
 
   // Move ordering and heuristics
   void orderMoves(Movelist &moves, Move ttMove);

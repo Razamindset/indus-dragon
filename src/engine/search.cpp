@@ -55,6 +55,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   positionsSearched++;
 
   if(depth == 0 || isGameOver()){
+    // return quiescenceSearch(alpha, beta, isMaximizing, ply);
     return evaluate(ply);
   }
 
@@ -63,7 +64,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   Move ttMove = Move::NULL_MOVE;
   int originalAlpha = alpha;
 
-  if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove)) {
+  if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply)) {
     return ttScore;
   }
 
@@ -133,10 +134,72 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   return bestScore;
 }
 
+int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
+    positionsSearched++;
+
+    if (isGameOver()) {
+        return evaluate(ply);
+    }
+
+    int standPat = evaluate(ply);
+
+    if (isMaximizing) {
+        if (standPat >= beta) {
+            return beta;
+        }
+        if (standPat > alpha) {
+            alpha = standPat;
+        }
+    } else {
+        if (standPat <= alpha) {
+            return alpha;
+        }
+        if (standPat < beta) {
+            beta = standPat;
+        }
+    }
+
+    Movelist moves;
+    movegen::legalmoves(moves, board);
+    orderMoves(moves, Move::NULL_MOVE);
+
+    bool inCheck = board.inCheck();
+
+    for (Move move : moves) {
+        if (!inCheck && !board.isCapture(move)) {
+            continue;
+        }
+
+        board.makeMove(move);
+        int score = quiescenceSearch(alpha, beta, !isMaximizing, ply + 1);
+        board.unmakeMove(move);
+
+        if (isMaximizing) {
+            if (score >= beta) {
+                return beta;
+            }
+            if (score > alpha) {
+                alpha = score;
+            }
+        } else {
+            if (score <= alpha) {
+                return alpha;
+            }
+            if (score < beta) {
+                beta = score;
+            }
+        }
+    }
+
+    return isMaximizing ? alpha : beta;
+}
+
+
 std::string Engine::getBestMove(int maxDepth) {
   if (isGameOver()) {
     return "";
   }
+  positionsSearched = 0;
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;
@@ -200,5 +263,6 @@ std::string Engine::getBestMove(int maxDepth) {
   }
 
   // printTTStats();
+
   return uci::moveToUci(bestMove);
 }
