@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="indus-dragon.png" alt="Indus Dragon" >
+  <img src="indus-dragon.png" alt="Indus Dragon" width="150">
 </p>
 
 # Indus Dragon Chess Engine
