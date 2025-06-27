@@ -8,7 +8,7 @@ void Engine::printTTStats() const {
   std::cout << "  TT Size       : " << transpositionTable.size() << " / " << MAX_TT_ENTRIES << "";
 }
 
-bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove){
+bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove, int ply){
   auto it = transpositionTable.find(hash);
 
   if(it == transpositionTable.end()){
@@ -23,19 +23,12 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
 
   // Check if the depth is acceptable
   if(entry.depth >= depth){
-    //! If dealing with mate the already scored valued can cause issues
-    // If the prev value was stored at Mate_score-3 but if we are 1 step closer now
-    // The tt will still read the old value but we need to deal with it using the depth
-    // * This was the issue i could not identify in my pawnstar engine that was causing issues.
-    // The goal of the TT is to store a mate score such that when retrieved,
-    // it correctly reflects the mate distance from the current node where it's being retrieved.
     int adjustedScore = entry.score;
 
-    // Using 1000 points as threshold as in the getBestMovefunction();
-    if(entry.score > MATE_SCORE - MATE_THRESHHOLD){
-      adjustedScore = entry.score - (entry.depth - depth);
-    }else if(entry.score < -MATE_SCORE + 1000){
-      adjustedScore = entry.score + (entry.depth - depth);
+    if (entry.score > MATE_SCORE - MATE_THRESHHOLD) {
+        adjustedScore -= ply;
+    } else if (entry.score < -MATE_SCORE + MATE_THRESHHOLD) {
+        adjustedScore += ply;
     }
 
     //* Check if:
@@ -58,26 +51,31 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
   return false;
 }
 
-// Store an entry in the transposition table
-void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove){
-  ttStores++;
+void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove) {
+    auto it = transpositionTable.find(hash);
 
-  auto it = transpositionTable.find(hash);
-  if(it != transpositionTable.end()){
-    ttCollisions++;
-    if(depth >= it->second.depth){
-      it->second = {hash, score, depth, type, bestMove};
-    }
-  }
-  else{
-    if (transpositionTable.size() >= MAX_TT_ENTRIES) {
-      // Simple scheme: randomly erase one
-      auto toErase = transpositionTable.begin();
-      std::advance(toErase, rand() % transpositionTable.size());
-      transpositionTable.erase(toErase);
-    }
-  }
+    if (it != transpositionTable.end()) {
+        // Entry exists, update if new entry has greater or equal depth
+        if (depth >= it->second.depth) {
+            it->second = {hash, score, depth, type, bestMove};
+            ttStores++;
+        } else {
+            ttCollisions++;
+        }
+    } else {
+        // Entry does not exist, add if table is not full
+        if (transpositionTable.size() < MAX_TT_ENTRIES) {
+            transpositionTable[hash] = {hash, score, depth, type, bestMove};
+            ttStores++;
+        } else {
+            // Table is full, implement a replacement strategy
+            // For now, we will use a simple random replacement
+            auto toErase = transpositionTable.begin();
+            std::advance(toErase, rand() % transpositionTable.size());
+            transpositionTable.erase(toErase);
 
-  // Insert new entry
-  transpositionTable[hash] = {hash, score, depth, type, bestMove};
+            transpositionTable[hash] = {hash, score, depth, type, bestMove};
+            ttStores++;
+        }
+    }
 }

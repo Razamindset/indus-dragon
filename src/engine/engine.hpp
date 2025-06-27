@@ -3,6 +3,7 @@
 
 #include <string>
 #include<unordered_map>
+#include <atomic>
 
 #include "../chess-library/include/chess.hpp"
 
@@ -44,6 +45,7 @@ struct TTEntry {
 class Engine {
  private:
   Board board;
+  std::atomic<bool> stopSearchFlag{false};
   int getPieceValue(Piece piece);
   long long positionsSearched = 0;
 
@@ -53,7 +55,7 @@ class Engine {
   int ttCollisions = 0;  // Number of overwrites
   int ttStores = 0;      // Total stores
   void storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove);
-  bool probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove);
+  bool probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove, int ply);
 
   // Evaluation
   int evaluate(int ply);
@@ -68,6 +70,7 @@ class Engine {
 
   // Search
   int minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply);
+  int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
 
   // Move ordering and heuristics
   void orderMoves(Movelist &moves, Move ttMove);
@@ -94,6 +97,8 @@ class Engine {
   // Move making used when the chess gui gives a list of move history. use this
   // to set the board state correctly
   void makeMove(std::string move);
+
+  void stopSearch() { stopSearchFlag = true; }
 
   // table stats
   void printTTStats() const;
