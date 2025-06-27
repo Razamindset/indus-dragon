@@ -52,6 +52,9 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
 }
 
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
+  if (stopSearchFlag) {
+    return 0;  // Return a neutral score if search is stopped
+  }
   positionsSearched++;
 
   if(depth == 0 || isGameOver()){
@@ -135,6 +138,9 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 }
 
 int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
+    if (stopSearchFlag) {
+        return 0;  // Return a neutral score if search is stopped
+    }
     positionsSearched++;
 
     if (isGameOver()) {
@@ -196,6 +202,7 @@ int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
 
 
 std::string Engine::getBestMove(int maxDepth) {
+  stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search
   if (isGameOver()) {
     return "";
   }

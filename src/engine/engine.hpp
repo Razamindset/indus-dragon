@@ -3,6 +3,7 @@
 
 #include <string>
 #include<unordered_map>
+#include <atomic>
 
 #include "../chess-library/include/chess.hpp"
 
@@ -44,6 +45,7 @@ struct TTEntry {
 class Engine {
  private:
   Board board;
+  std::atomic<bool> stopSearchFlag{false};
   int getPieceValue(Piece piece);
   long long positionsSearched = 0;
 
@@ -95,6 +97,8 @@ class Engine {
   // Move making used when the chess gui gives a list of move history. use this
   // to set the board state correctly
   void makeMove(std::string move);
+
+  void stopSearch() { stopSearchFlag = true; }
 
   // table stats
   void printTTStats() const;

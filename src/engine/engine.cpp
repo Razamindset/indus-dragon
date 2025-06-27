@@ -10,7 +10,8 @@ void Engine::initilizeEngine() {
 }
 
 void Engine::makeMove(std::string move) {
-  board.makeMove(uci::uciToMove(board, move));
+  Move parsedMove = uci::uciToMove(board, move);
+  board.makeMove(parsedMove);
 }
 
 int Engine::getPieceValue(Piece piece) {
