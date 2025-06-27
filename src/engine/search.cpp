@@ -68,6 +68,20 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   int originalAlpha = alpha;
 
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply)) {
+    // If we have an EXACT TT hit, we can reconstruct the PV
+    if (transpositionTable.at(boardhash).type == TTEntryType::EXACT && ttMove != Move::NULL_MOVE) {
+      pv.clear();
+      pv.push_back(ttMove);
+      // Recursively get the rest of the PV by making the move and calling minmax
+      // with a reduced depth. This is a "PV-reconstruction" search.
+      board.makeMove(ttMove);
+      std::vector<Move> childPv;
+      // Call minmax with depth - 1 and the same alpha/beta window.
+      // The score from this recursive call is not used, only the childPv.
+      minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+      board.unmakeMove(ttMove);
+      pv.insert(pv.end(), childPv.begin(), childPv.end());
+    }
     return ttScore;
   }
 
@@ -137,75 +151,12 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   return bestScore;
 }
 
-int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
-    if (stopSearchFlag) {
-        return 0;  // Return a neutral score if search is stopped
-    }
-    positionsSearched++;
-
-    if (isGameOver()) {
-        return evaluate(ply);
-    }
-
-    int standPat = evaluate(ply);
-
-    if (isMaximizing) {
-        if (standPat >= beta) {
-            return beta;
-        }
-        if (standPat > alpha) {
-            alpha = standPat;
-        }
-    } else {
-        if (standPat <= alpha) {
-            return alpha;
-        }
-        if (standPat < beta) {
-            beta = standPat;
-        }
-    }
-
-    Movelist moves;
-    movegen::legalmoves(moves, board);
-    orderMoves(moves, Move::NULL_MOVE);
-
-    bool inCheck = board.inCheck();
-
-    for (Move move : moves) {
-        if (!inCheck && !board.isCapture(move)) {
-            continue;
-        }
-
-        board.makeMove(move);
-        int score = quiescenceSearch(alpha, beta, !isMaximizing, ply + 1);
-        board.unmakeMove(move);
-
-        if (isMaximizing) {
-            if (score >= beta) {
-                return beta;
-            }
-            if (score > alpha) {
-                alpha = score;
-            }
-        } else {
-            if (score <= alpha) {
-                return alpha;
-            }
-            if (score < beta) {
-                beta = score;
-            }
-        }
-    }
-
-    return isMaximizing ? alpha : beta;
-}
-
-
 std::string Engine::getBestMove(int maxDepth) {
   stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search
   if (isGameOver()) {
     return "";
   }
+
   positionsSearched = 0;
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
@@ -217,10 +168,8 @@ std::string Engine::getBestMove(int maxDepth) {
     int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
     std::vector<Move> currentBestLine;
 
-    // We don't need to generate moves at the root, minmax will do it.
-    // The best move from the previous iteration will be prioritized by the TT.
     bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
-
+    
     // After the search at currentDepth is complete, update our overall best move.
     bestMove = currentBestLine.front();
     bestLine = currentBestLine;
