@@ -1,20 +1,13 @@
 <p align="center">
-  <img src="indus-dragon.png" alt="Indus Dragon" width="150">
+  <img src="indus-dragon.png" alt="Indus Dragon" width="150" style="border-radius: 15px;">
 </p>
-
-# Indus Dragon Chess Engine
+<h1 align="center">Indus Dragon Chess Engine</h1>
 
 Indus Dragon is a UCI chess engine written in C++ that uses the [chess-library](https://github.com/Disservin/chess-library) for board operations and move validation.
 
 [Join our Discord Channel](https://discord.gg/ZBW5DBw8)
 
-## Play The engine
-
-You can play the engine on lichess. If it is online.
-
-```sh
-https://lichess.org/@/indusdragon
-```
+[Play the engine](https://lichess.org/@/indusdragon)
 
 ## Building the Project
 
