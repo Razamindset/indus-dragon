@@ -79,31 +79,34 @@ int Engine::evaluate(int ply) {
 void Engine::evaluatePST(int &eval, bool isEndgame){
   for (int sq = 0; sq < 64; sq++) {
     Piece piece = board.at(Square(sq));
-    if (piece.type() == PieceType::NONE) continue;
+    if (piece == PieceType::NONE) continue;
 
-    int index = (piece.color() == Color::BLACK) ? mirrorIndex(sq) : sq;
+    // std::cout<<sq<<" Actual Index ";
+    int index = (piece.color() == Color::WHITE) ? sq : mirrorIndex(sq);
+    // std::cout<<index<<" Mirrored Index ";
+
     int squareValue = 0;
 
-    switch (piece.type()) {
-      case PAWN:
-        squareValue = PAWN_TABLE[index];
-        break;
-      case KNIGHT:
-        squareValue = KNIGHT_TABLE[index];
-        break;
-      case BISHOP:
-        squareValue = BISHOP_TABLE[index];
-        break;
-      case ROOK:
-        squareValue = ROOK_TABLE[index];
-        break;
-      case QUEEN:
-        squareValue = QUEEN_TABLE[index];
-        break;
-      case KING:
-        squareValue = isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
-        break;
+    if(piece == PieceType::PAWN){
+      squareValue = PAWN_TABLE[index];
     }
+    else if(piece == PieceType::KNIGHT){
+      squareValue = KNIGHT_TABLE[index];
+    }
+    else if(piece == PieceType::BISHOP){
+      squareValue = BISHOP_TABLE[index];
+    }
+    else if(piece == PieceType::ROOK){
+      squareValue = ROOK_TABLE[index];
+    }
+    else if(piece == PieceType::QUEEN){
+      squareValue = QUEEN_TABLE[index];
+    }
+    else if(piece == PieceType::KING){
+      squareValue = isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+    }
+
+    // std::cout<<piece.color()<<" "<<piece.type()<<" Index: "<<index<<" Value: "<<squareValue<<"\n";
 
     eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
   }

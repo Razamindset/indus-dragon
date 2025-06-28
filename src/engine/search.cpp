@@ -157,6 +157,9 @@ std::string Engine::getBestMove(int maxDepth) {
     return "";
   }
 
+  // std::cout<<evaluate(2)<<"\n";
+  // return "e424";
+
   positionsSearched = 0;
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
