@@ -52,7 +52,7 @@ After building, you can run the engine from the build directory:
 
 **⚠️ Important Notice ⚠️**
 
-The engine does not use quiesc search because the evaluation function is still in development. Quiesc search will be added soon. For now The goal is to craft the evaluation fucntion and add iterative deepening with time management.
+The engine has been updated to use extended search to reach quiet positions howevver a lot of work is reamaining. the engine also has a simple time management where it uses 1/20 of remaining time to find the best move which needs to be made more dynamic. Also, The next steps will be improving perf and evaluation.
 
 ---
 

@@ -1,5 +1,3 @@
-Add killer moves
-Add Quiscience search
-Improve Uci Compatibility.
-Add pruning techniques and stuff
-Add time management
+1. Add killer moves and history heuristics for better perf.
+2. Add pruning techniques in Quiscience search.
+3. Add more dynamic time management alogos.
