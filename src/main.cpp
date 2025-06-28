@@ -14,6 +14,7 @@ class UCIAdapter {
 
   std::thread searchThread;
   std::atomic<bool> stopRequested;
+  bool storeLogs = false;
 
  public:
   UCIAdapter(Engine* e) : engine(e), stopRequested(false) {}
@@ -33,6 +34,7 @@ class UCIAdapter {
 
  private:
   void logCommand(const std::string& cmd) {
+    if (!storeLogs) return;
     try {
       std::ofstream logFile("uci_log.txt", std::ios_base::app);
       if (logFile.is_open()) {
@@ -44,7 +46,21 @@ class UCIAdapter {
     }
   }
 
+  void logOutput(const std::string& output) {
+    if (!storeLogs) return;
+    try {
+      std::ofstream logFile("uci_log.txt", std::ios_base::app);
+      if (logFile.is_open()) {
+        logFile << "[OUTPUT] " << output << std::endl;
+        logFile.close();
+      }
+    } catch (...) {
+      // Silently ignore logging errors to prevent crashes
+    }
+  }
+
   void logError(const std::string& error) {
+    if (!storeLogs) return;
     try {
       std::ofstream logFile("uci_log.txt", std::ios_base::app);
       if (logFile.is_open()) {
@@ -67,7 +83,9 @@ class UCIAdapter {
     if (token == "uci") {
       handleUCI();
     } else if (token == "isready") {
-      std::cout << "readyok" << std::endl;
+      std::string readyOk = "readyok";
+      std::cout << readyOk << std::endl;
+      logOutput(readyOk);
     } else if (token == "position") {
       handlePosition(iss);
     } else if (token == "d") {
@@ -81,6 +99,9 @@ class UCIAdapter {
     } else if (token == "quit") {
       handleStop(); // Ensure search thread is stopped before exit
       exit(0);
+    } else if (token == "togglelogs") {
+        storeLogs = !storeLogs;
+        logCommand(storeLogs ? "Started storing logs" : "Stopped storing logs");
     } else if (token == "ucinewgame") {
       handleStop(); // Stop any ongoing search before reinitializing
       if (engine) {
@@ -92,13 +113,20 @@ class UCIAdapter {
   }
 
   void handleUCI() {
-    std::cout << "id name Indus Dragon" << std::endl;
-    std::cout << "id author Razamindset" << std::endl;
+    std::string idName = "id name Indus Dragon";
+    std::string idAuthor = "id author Razamindset";
+    std::string uciOk = "uciok";
+
+    std::cout << idName << std::endl;
+    logOutput(idName);
+    std::cout << idAuthor << std::endl;
+    logOutput(idAuthor);
 
     // Output available options if any
     // std::cout << "option name Hash type spin default 64 min 1 max 1024" << std::endl;
 
-    std::cout << "uciok" << std::endl;
+    std::cout << uciOk << std::endl;
+    logOutput(uciOk);
   }
 
   void handlePosition(std::istringstream& iss) {
@@ -195,11 +223,13 @@ class UCIAdapter {
     // Start a new search in a separate thread
     searchThread = std::thread([this]() {
       try {
-        std::string bestMove = engine->getBestMove(5);
+        std::string bestMove = engine->getBestMove(4);
         
         // FIXED: Use atomic check to prevent race condition
         if (!stopRequested.load()) {
-          std::cout << "bestmove " << bestMove << std::endl;
+          std::string bestMoveMsg = "bestmove " + bestMove;
+          std::cout << bestMoveMsg << std::endl;
+          logOutput(bestMoveMsg);
           logCommand("Best move found: " + bestMove);
         } else {
           logCommand("Search was stopped before completion");

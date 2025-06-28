@@ -58,8 +58,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   positionsSearched++;
 
   if(depth == 0 || isGameOver()){
-    // return quiescenceSearch(alpha, beta, isMaximizing, ply);
-    return evaluate(ply);
+    return quiescenceSearch(alpha, beta, isMaximizing, ply);
   }
 
   uint64_t boardhash = board.hash();
@@ -150,6 +149,100 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
   return bestScore;
 }
+
+/* Reach a stable quiet pos before evaluating */
+int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
+    if (stopSearchFlag) {
+        return 0;
+    }
+    positionsSearched++;
+
+    if (isGameOver()) {
+        return evaluate(ply);
+    }
+
+    int standPat = evaluate(ply);
+
+    if (isMaximizing) {
+        if (standPat >= beta) {
+            return beta;
+        }
+        alpha = std::max(alpha, standPat);
+    } else {
+        if (standPat <= alpha) {
+            return alpha;
+        }
+        beta = std::min(beta, standPat);
+    }
+
+    Movelist moves;
+    movegen::legalmoves(moves, board);
+    orderQuiescMoves(moves);
+
+    for (Move move : moves) {
+        board.makeMove(move);
+        int score = quiescenceSearch(alpha, beta, !isMaximizing, ply + 1);
+        board.unmakeMove(move);
+
+        if (isMaximizing) {
+            alpha = std::max(alpha, score);
+            if (alpha >= beta) {
+                break;
+            }
+        } else {
+            beta = std::min(beta, score);
+            if (alpha >= beta) {
+                break;
+            }
+        }
+    }
+
+    return isMaximizing ? alpha : beta;
+}
+
+void Engine::orderQuiescMoves(Movelist& moves) {
+    std::vector<std::pair<Move, int>> scoredMoves;
+    scoredMoves.reserve(moves.size());
+
+    for (Move move : moves) {
+        int score = 0;
+        bool isInteresting = false;
+
+        if (board.isCapture(move)) {
+            isInteresting = true;
+            Piece attacker = board.at(move.from());
+            Piece victim = board.at(move.to());
+            score += 100 * getPieceValue(victim) - getPieceValue(attacker);
+        }
+
+        if (move.typeOf() == Move::PROMOTION) {
+            isInteresting = true;
+            if (move.promotionType() == QUEEN) {
+                score += 900;
+            } else if (move.promotionType() == ROOK) {
+                score += 500;
+            } else if (move.promotionType() == BISHOP) {
+                score += 320;
+            } else if (move.promotionType() == KNIGHT) {
+                score += 300;
+            }
+        }
+
+        if (isInteresting) {
+            scoredMoves.emplace_back(move, score);
+        }
+    }
+
+    std::sort(scoredMoves.begin(), scoredMoves.end(),
+              [](const auto& a, const auto& b) { return a.second > b.second; });
+
+    moves.clear();
+    for (const auto& [move, score] : scoredMoves) {
+        moves.add(move);
+    }
+}
+
+
 
 std::string Engine::getBestMove(int maxDepth) {
   stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search

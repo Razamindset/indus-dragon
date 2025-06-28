@@ -73,7 +73,8 @@ class Engine {
   int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
 
   // Move ordering and heuristics
-  void orderMoves(Movelist &moves, Move ttMove);
+  void orderMoves(Movelist& moves, Move ttMove);
+  void orderQuiescMoves(Movelist& moves);
 
  public:
   void setPosition(const std::string& fen);
