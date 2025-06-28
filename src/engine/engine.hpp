@@ -4,6 +4,7 @@
 #include <string>
 #include<unordered_map>
 #include <atomic>
+#include <chrono>
 
 #include "../chess-library/include/chess.hpp"
 
@@ -49,6 +50,18 @@ class Engine {
   int getPieceValue(Piece piece);
   long long positionsSearched = 0;
 
+  // Time management
+  int wtime = 0;
+  int btime = 0;
+  int winc = 0;
+  int binc = 0;
+  int movestogo = 0;
+  int movetime = 0;
+  bool time_controls_enabled = false;
+
+  std::chrono::steady_clock::time_point search_start_time;
+  int allocated_time = 0;
+
   // Transposition table
   std::unordered_map<uint64_t, TTEntry> transpositionTable;
   int ttHits = 0;        // Number of search matches
@@ -76,13 +89,17 @@ class Engine {
   void orderMoves(Movelist& moves, Move ttMove);
   void orderQuiescMoves(Movelist& moves);
 
+  // Time management
+  void calculateSearchTime();
+
  public:
   void setPosition(const std::string& fen);
   void printBoard();
   void initilizeEngine();
+  void setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo, int movetime);
 
   // Client accessible get best move function
-  std::string getBestMove(int depth);
+  std::string getBestMove();
 
   //* Game state related
   bool isGameOver() {

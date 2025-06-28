@@ -9,6 +9,21 @@ void Engine::initilizeEngine() {
   board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
+void Engine::setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo, int movetime) {
+    this->wtime = wtime;
+    this->btime = btime;
+    this->winc = winc;
+    this->binc = binc;
+    this->movestogo = movestogo;
+    this->movetime = movetime;
+
+    if (wtime > 0 || btime > 0 || movetime > 0) {
+        time_controls_enabled = true;
+    } else {
+        time_controls_enabled = false;
+    }
+}
+
 void Engine::makeMove(std::string move) {
   Move parsedMove = uci::uciToMove(board, move);
   board.makeMove(parsedMove);
