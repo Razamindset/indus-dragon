@@ -93,7 +93,7 @@ class UCIAdapter {
         engine->printBoard();
       }
     } else if (token == "go") {
-      handleGo();
+      handleGo(iss);
     } else if (token == "stop") {
       handleStop();
     } else if (token == "quit") {
@@ -208,7 +208,7 @@ class UCIAdapter {
     }
   }
 
-  void handleGo() {
+  void handleGo(std::istringstream& iss) {
     if (!engine) {
       logError("Engine is null in handleGo");
       return;
@@ -217,13 +217,33 @@ class UCIAdapter {
     // Stop any previous search properly
     handleStop();
 
+    int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
+    std::string token;
+    while (iss >> token) {
+        if (token == "wtime") {
+            iss >> wtime;
+        } else if (token == "btime") {
+            iss >> btime;
+        } else if (token == "winc") {
+            iss >> winc;
+        } else if (token == "binc") {
+            iss >> binc;
+        } else if (token == "movestogo") {
+            iss >> movestogo;
+        } else if (token == "movetime") {
+            iss >> movetime;
+        }
+    }
+
+    engine->setSearchLimits(wtime, btime, winc, binc, movestogo, movetime);
+
     stopRequested = false; // Reset the stop flag
     logCommand("Starting search");
 
     // Start a new search in a separate thread
     searchThread = std::thread([this]() {
       try {
-        std::string bestMove = engine->getBestMove(4);
+        std::string bestMove = engine->getBestMove();
         
         // FIXED: Use atomic check to prevent race condition
         if (!stopRequested.load()) {

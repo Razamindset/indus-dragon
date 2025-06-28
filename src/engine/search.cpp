@@ -55,6 +55,19 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   if (stopSearchFlag) {
     return 0;  // Return a neutral score if search is stopped
   }
+
+  if (time_controls_enabled) {
+      auto current_time = std::chrono::steady_clock::now();
+      auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time).count();
+      if (elapsed_time >= allocated_time) {
+          stopSearchFlag = true;
+      }
+  }
+
+  if (stopSearchFlag) {
+      return 0;
+  }
+
   positionsSearched++;
 
   if(depth == 0 || isGameOver()){
@@ -242,16 +255,43 @@ void Engine::orderQuiescMoves(Movelist& moves) {
     }
 }
 
+void Engine::calculateSearchTime() {
+    if (movetime > 0) {
+        allocated_time = movetime;
+    } else {
+        int time_for_move = 0;
+        if (board.sideToMove() == Color::WHITE) {
+            time_for_move = wtime / 20; // Use 1/20th of the remaining time
+            if (movestogo > 0) {
+                time_for_move = wtime / movestogo;
+            }
+            time_for_move += winc;
+        } else {
+            time_for_move = btime / 20;
+            if (movestogo > 0) {
+                time_for_move = btime / movestogo;
+            }
+            time_for_move += binc;
+        }
+        allocated_time = time_for_move;
+    }
+
+    // A small buffer to make sure we don't overshoot
+    allocated_time -= 50;
+    if (allocated_time < 0) allocated_time = 0;
+}
 
 
-std::string Engine::getBestMove(int maxDepth) {
+
+std::string Engine::getBestMove() {
   stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search
   if (isGameOver()) {
     return "";
   }
+  int maxDepth=10;
 
-  // std::cout<<evaluate(2)<<"\n";
-  // return "e424";
+  calculateSearchTime();
+  search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
 
@@ -265,10 +305,20 @@ std::string Engine::getBestMove(int maxDepth) {
     std::vector<Move> currentBestLine;
 
     bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
+
+    if(currentDepth == maxDepth){
+      stopSearchFlag = true;
+    }
+
+    if ((stopSearchFlag)) {
+        break;
+    }
     
     // After the search at currentDepth is complete, update our overall best move.
-    bestMove = currentBestLine.front();
-    bestLine = currentBestLine;
+    if (!currentBestLine.empty()) {
+        bestMove = currentBestLine.front();
+        bestLine = currentBestLine;
+    }
 
     // Print UCI info for the completed depth
     std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " score ";
