@@ -1,9 +1,13 @@
 #include "engine.hpp"
 
 /* Order moves based on their priority */
-void Engine::orderMoves(Movelist &moves, Move ttMove){
+void Engine::orderMoves(Movelist &moves, Move ttMove, int ply){
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
+
+  // Get the killer moves
+  Move killer1 = killerMoves[ply][0];
+  Move killer2 = killerMoves[ply][1];
 
   // Loop through each move and assign it a score
   for(Move move:moves){
@@ -13,6 +17,13 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
     if(ttMove != Move::NULL_MOVE && move == ttMove){
       scoredMoves.emplace_back(move, 1000);
       continue;
+    }
+
+    // KIller moves score
+    if (move == killer1) {
+      score = 9000; // High score for primary killer
+    } else if (move == killer2) {
+      score = 8500; // Slightly lower score for secondary killer
     }
 
     // Todo Find a good way to check for checks can't use board.makemove() and then see if in check
@@ -100,7 +111,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   Movelist moves;
   movegen::legalmoves(moves, board);
 
-  orderMoves(moves, ttMove);
+  orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
   int bestScore;
@@ -123,7 +134,15 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
       alpha = std::max(bestScore, alpha);
 
-      if (beta <= alpha) break;
+      if (beta <= alpha){
+        // If a move caused a cuoff it would likely be a good candidate.
+        if(!board.isCapture(move)){
+          // Shifting the old move 
+          killerMoves[ply][1] = killerMoves[ply][0];
+          killerMoves[ply][0] = move;
+        }
+        break;
+      };
     }
 
   } else {
@@ -144,7 +163,15 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
       beta = std::min(bestScore, beta);
 
-      if (beta <= alpha) break;
+      if (beta <= alpha){
+        // If a move caused a cuoff it would likely be a good candidate.
+        if(!board.isCapture(move)){
+          // Shifting the old move 
+          killerMoves[ply][1] = killerMoves[ply][0];
+          killerMoves[ply][0] = move;
+        }
+        break;
+      };
     }
   }
 
@@ -281,32 +308,37 @@ void Engine::calculateSearchTime() {
     if (allocated_time < 0) allocated_time = 0;
 }
 
-
+void Engine::clearKiller(){
+  for(int i = 0; i<MAX_SEARCH_DEPTH; ++i){
+    killerMoves[i][0] = Move::NULL_MOVE;
+    killerMoves[i][1] = Move::NULL_MOVE;
+  }
+}
 
 std::string Engine::getBestMove() {
   stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search
   if (isGameOver()) {
     return "";
   }
-  int maxDepth=10;
 
   calculateSearchTime();
   search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
+  clearKiller(); // Empty the killer moves table
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
 
   // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
+  for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
     int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
     std::vector<Move> currentBestLine;
 
     bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
 
-    if(currentDepth == maxDepth){
+    if(currentDepth == MAX_SEARCH_DEPTH){
       stopSearchFlag = true;
     }
 

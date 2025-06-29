@@ -15,7 +15,7 @@ constexpr int DRAW_SCORE = 0;
 constexpr size_t MAX_TT_ENTRIES = 1 << 20;
 
 // MAX search depth
-constexpr int MAX_SEARCH_DEPTH = 64; 
+constexpr int MAX_SEARCH_DEPTH = 12; 
 
 // Material values
 constexpr int PAWN_VALUE = 100;
@@ -86,8 +86,10 @@ class Engine {
   int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
 
   // Move ordering and heuristics
-  void orderMoves(Movelist& moves, Move ttMove);
+  void orderMoves(Movelist& moves, Move ttMove, int ply);
   void orderQuiescMoves(Movelist& moves);
+  Move killerMoves[MAX_SEARCH_DEPTH][2];
+  void clearKiller();
 
   // Time management
   void calculateSearchTime();
