@@ -59,6 +59,13 @@ class Engine {
   int movetime = 0;
   bool time_controls_enabled = false;
 
+  long long soft_time_limit = 0;
+  long long hard_time_limit = 0;
+  int best_move_changes = 0;
+  Move last_iteration_best_move = Move::NULL_MOVE;
+
+  void calculateSearchTime();
+
   std::chrono::steady_clock::time_point search_start_time;
   int allocated_time = 0;
 
@@ -90,9 +97,6 @@ class Engine {
   void orderQuiescMoves(Movelist& moves);
   Move killerMoves[MAX_SEARCH_DEPTH][2];
   void clearKiller();
-
-  // Time management
-  void calculateSearchTime();
 
  public:
   void setPosition(const std::string& fen);
