@@ -1,9 +1,13 @@
 #include "engine.hpp"
 
 /* Order moves based on their priority */
-void Engine::orderMoves(Movelist &moves, Move ttMove){
+void Engine::orderMoves(Movelist &moves, Move ttMove, int ply){
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
+
+  // Get the killer moves
+  Move killer1 = killerMoves[ply][0];
+  Move killer2 = killerMoves[ply][1];
 
   // Loop through each move and assign it a score
   for(Move move:moves){
@@ -11,8 +15,15 @@ void Engine::orderMoves(Movelist &moves, Move ttMove){
     
     // Priorotize ttMove and break after putthing on top
     if(ttMove != Move::NULL_MOVE && move == ttMove){
-      scoredMoves.emplace_back(move, 1000);
+      scoredMoves.emplace_back(move, 10000);
       continue;
+    }
+
+    // KIller moves score
+    if (move == killer1) {
+      score = 9000; // High score for primary killer
+    } else if (move == killer2) {
+      score = 8500; // Slightly lower score for secondary killer
     }
 
     // Todo Find a good way to check for checks can't use board.makemove() and then see if in check
@@ -100,7 +111,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   Movelist moves;
   movegen::legalmoves(moves, board);
 
-  orderMoves(moves, ttMove);
+  orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
   int bestScore;
@@ -123,7 +134,15 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
       alpha = std::max(bestScore, alpha);
 
-      if (beta <= alpha) break;
+      if (beta <= alpha){
+        // If a move caused a cuoff it would likely be a good candidate.
+        if(!board.isCapture(move)){
+          // Shifting the old move 
+          killerMoves[ply][1] = killerMoves[ply][0];
+          killerMoves[ply][0] = move;
+        }
+        break;
+      };
     }
 
   } else {
@@ -144,7 +163,15 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
       beta = std::min(bestScore, beta);
 
-      if (beta <= alpha) break;
+      if (beta <= alpha){
+        // If a move caused a cuoff it would likely be a good candidate.
+        if(!board.isCapture(move)){
+          // Shifting the old move 
+          killerMoves[ply][1] = killerMoves[ply][0];
+          killerMoves[ply][0] = move;
+        }
+        break;
+      };
     }
   }
 
@@ -256,44 +283,89 @@ void Engine::orderQuiescMoves(Movelist& moves) {
 }
 
 void Engine::calculateSearchTime() {
-    if (movetime > 0) {
-        allocated_time = movetime;
-    } else {
-        int time_for_move = 0;
-        if (board.sideToMove() == Color::WHITE) {
-            time_for_move = wtime / 20; // Use 1/20th of the remaining time
-            if (movestogo > 0) {
-                time_for_move = wtime / movestogo;
-            }
-            time_for_move += winc;
-        } else {
-            time_for_move = btime / 20;
-            if (movestogo > 0) {
-                time_for_move = btime / movestogo;
-            }
-            time_for_move += binc;
-        }
-        allocated_time = time_for_move;
+    // Handle "go infinite" - when no time controls are given.
+    if (movetime <= 0 && wtime <= 0 && btime <= 0) {
+        // Set time limits to a very large value to simulate infinity.
+        // The search will continue until a "stop" command or max depth is reached.
+        const long long infinite_time = 1000LL * 60 * 60 * 24; // 24 hours in ms
+        soft_time_limit = infinite_time;
+        hard_time_limit = infinite_time;
+        allocated_time = infinite_time;
+        // The check inside minmax should be disabled for infinite search
+        // so it doesn't stop prematurely based on a previous game's time.
+        time_controls_enabled = false;
+        return;
     }
 
-    // A small buffer to make sure we don't overshoot
-    allocated_time -= 50;
-    if (allocated_time < 0) allocated_time = 0;
+    // If we are here, time controls are active for this search.
+    time_controls_enabled = true;
+
+    // If movetime is fixed, all limits are the same.
+    if (movetime > 0) {
+        soft_time_limit = movetime;
+        hard_time_limit = movetime;
+        // Use allocated_time for the hard stop with a small buffer
+        allocated_time = movetime > 50 ? movetime - 50 : 0;
+        return;
+    }
+
+    int remaining_time;
+    int increment;
+    // Estimate 40 moves left in the game if not specified by UCI.
+    int moves_to_go = movestogo > 0 ? movestogo : 40;
+
+    if (board.sideToMove() == Color::WHITE) {
+        remaining_time = wtime;
+        increment = winc;
+    } else {
+        remaining_time = btime;
+        increment = binc;
+    }
+
+    // A safe portion of time to use for the move.
+    // We don't want to use more than 80% of our remaining time on a single move.
+    int safe_time = remaining_time * 0.8;
+
+    // Calculate the ideal time for this move.
+    int ideal_time = (remaining_time / moves_to_go) + (increment / 2);
+
+    // Our soft target is the ideal time.
+    soft_time_limit = ideal_time;
+
+    // The hard limit is much larger, giving us flexibility.
+    hard_time_limit = ideal_time * 5;
+
+    // But never let the hard limit exceed our safe time.
+    if (hard_time_limit > safe_time) {
+        hard_time_limit = safe_time;
+    }
+
+    // The allocated_time is the hard limit that the minmax function will use to force a stop.
+    // We leave a small buffer to ensure we don't lose on time.
+    allocated_time = hard_time_limit > 50 ? hard_time_limit - 50 : 0;
 }
 
-
+void Engine::clearKiller(){
+  for(int i = 0; i<MAX_SEARCH_DEPTH; ++i){
+    killerMoves[i][0] = Move::NULL_MOVE;
+    killerMoves[i][1] = Move::NULL_MOVE;
+  }
+}
 
 std::string Engine::getBestMove() {
-  stopSearchFlag = false;  // Reset the stop flag at the beginning of a new search
+  stopSearchFlag = false;
   if (isGameOver()) {
     return "";
   }
-  int maxDepth=10;
+  int maxDepth = MAX_SEARCH_DEPTH;
 
   calculateSearchTime();
   search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
+  best_move_changes = 0;
+  last_iteration_best_move = Move::NULL_MOVE;
+  clearKiller();
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;
@@ -306,21 +378,21 @@ std::string Engine::getBestMove() {
 
     bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
 
-    if(currentDepth == maxDepth){
-      stopSearchFlag = true;
-    }
-
-    if ((stopSearchFlag)) {
+    // If the hard time limit was hit, stop searching immediately.
+    if (stopSearchFlag && currentDepth > 1) {
         break;
     }
     
-    // After the search at currentDepth is complete, update our overall best move.
     if (!currentBestLine.empty()) {
+        if (last_iteration_best_move != Move::NULL_MOVE && currentBestLine.front() != last_iteration_best_move) {
+            best_move_changes++;
+        }
         bestMove = currentBestLine.front();
         bestLine = currentBestLine;
+        last_iteration_best_move = bestMove;
     }
 
-    // Print UCI info for the completed depth
+    // --- UCI Info Output (your existing code is fine here) ---
     std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " score ";
 
     if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
@@ -349,11 +421,28 @@ std::string Engine::getBestMove() {
       std::cout << move << " ";
     }
     std::cout << "\n";
+
+
+    // --- Corrected Time Management Check ---
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time).count();
+
+    // Check if we should stop.
+    if (elapsed_time >= soft_time_limit) {
+        // If the best move has been unstable, give it a bit more time,
+        // but only if we are not close to our hard limit.
+        if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 2) {
+            // Extend time by a small, fixed amount (e.g., 50% of the original soft limit)
+            soft_time_limit += soft_time_limit * 0.5;
+            best_move_changes = 0; // Reset counter for the next potential extension
+        } else {
+            // Otherwise, the search is stable enough or we are out of time, so stop.
+            break;
+        }
+    }
   }
 
   if (bestMove == Move::NULL_MOVE) {
-    // This should ideally not happen if there are legal moves.
-    // As a fallback, grab the first legal move.
     Movelist moves;
     movegen::legalmoves(moves, board);
     if (!moves.empty()) {
@@ -363,8 +452,6 @@ std::string Engine::getBestMove() {
         return "";
     }
   }
-
-  // printTTStats();
 
   return uci::moveToUci(bestMove);
 }

@@ -15,7 +15,7 @@ constexpr int DRAW_SCORE = 0;
 constexpr size_t MAX_TT_ENTRIES = 1 << 20;
 
 // MAX search depth
-constexpr int MAX_SEARCH_DEPTH = 64; 
+constexpr int MAX_SEARCH_DEPTH = 12; 
 
 // Material values
 constexpr int PAWN_VALUE = 100;
@@ -59,6 +59,13 @@ class Engine {
   int movetime = 0;
   bool time_controls_enabled = false;
 
+  long long soft_time_limit = 0;
+  long long hard_time_limit = 0;
+  int best_move_changes = 0;
+  Move last_iteration_best_move = Move::NULL_MOVE;
+
+  void calculateSearchTime();
+
   std::chrono::steady_clock::time_point search_start_time;
   int allocated_time = 0;
 
@@ -86,11 +93,10 @@ class Engine {
   int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
 
   // Move ordering and heuristics
-  void orderMoves(Movelist& moves, Move ttMove);
+  void orderMoves(Movelist& moves, Move ttMove, int ply);
   void orderQuiescMoves(Movelist& moves);
-
-  // Time management
-  void calculateSearchTime();
+  Move killerMoves[MAX_SEARCH_DEPTH][2];
+  void clearKiller();
 
  public:
   void setPosition(const std::string& fen);
