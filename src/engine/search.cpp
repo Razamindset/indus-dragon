@@ -283,66 +283,68 @@ void Engine::orderQuiescMoves(Movelist& moves) {
 }
 
 void Engine::calculateSearchTime() {
-    // Handle "go infinite" - when no time controls are given.
-    if (movetime <= 0 && wtime <= 0 && btime <= 0) {
-        // Set time limits to a very large value to simulate infinity.
-        // The search will continue until a "stop" command or max depth is reached.
-        const long long infinite_time = 1000LL * 60 * 60 * 24; // 24 hours in ms
-        soft_time_limit = infinite_time;
-        hard_time_limit = infinite_time;
-        allocated_time = infinite_time;
-        // The check inside minmax should be disabled for infinite search
-        // so it doesn't stop prematurely based on a previous game's time.
-        time_controls_enabled = false;
-        return;
-    }
 
-    // If we are here, time controls are active for this search.
-    time_controls_enabled = true;
 
-    // If movetime is fixed, all limits are the same.
-    if (movetime > 0) {
-        soft_time_limit = movetime;
-        hard_time_limit = movetime;
-        // Use allocated_time for the hard stop with a small buffer
-        allocated_time = movetime > 50 ? movetime - 50 : 0;
-        return;
-    }
+  // Handle "go infinite" - when no time controls are given.
+  if (movetime <= 0 && wtime <= 0 && btime <= 0) {
+    // Set time limits to a very large value to simulate infinity.
+    // The search will continue until a "stop" command or max depth is reached.
+    const long long infinite_time = 1000LL * 60 * 60 * 24; // 24 hours in ms
+    soft_time_limit = infinite_time;
+    hard_time_limit = infinite_time;
+    allocated_time = infinite_time;
+    // The check inside minmax should be disabled for infinite search
+    // so it doesn't stop prematurely based on a previous game's time.
+    time_controls_enabled = false;
+    return;
+  }
 
-    int remaining_time;
-    int increment;
-    // Estimate 40 moves left in the game if not specified by UCI.
-    int moves_to_go = movestogo > 0 ? movestogo : 40;
+  // If we are here, time controls are active for this search.
+  time_controls_enabled = true;
 
-    if (board.sideToMove() == Color::WHITE) {
-        remaining_time = wtime;
-        increment = winc;
-    } else {
-        remaining_time = btime;
-        increment = binc;
-    }
+  // If movetime is fixed, all limits are the same.
+  if (movetime > 0) {
+    soft_time_limit = movetime;
+    hard_time_limit = movetime;
+    // Use allocated_time for the hard stop with a small buffer
+    allocated_time = movetime > 50 ? movetime - 50 : 0;
+    return;
+  }
 
-    // A safe portion of time to use for the move.
-    // We don't want to use more than 80% of our remaining time on a single move.
-    int safe_time = remaining_time * 0.8;
+  int remaining_time;
+  int increment;
+  // Estimate 40 moves left in the game if not specified by UCI.
+  int moves_to_go = movestogo > 0 ? movestogo : 40;
 
-    // Calculate the ideal time for this move.
-    int ideal_time = (remaining_time / moves_to_go) + (increment / 2);
+  if (board.sideToMove() == Color::WHITE) {
+    remaining_time = wtime;
+    increment = winc;
+  } else {
+    remaining_time = btime;
+    increment = binc;
+  }
 
-    // Our soft target is the ideal time.
-    soft_time_limit = ideal_time;
+  // A safe portion of time to use for the move.
+  // We don't want to use more than 50% of our remaining time on a single move.
+  int safe_time = remaining_time * 0.5;
 
-    // The hard limit is much larger, giving us flexibility.
-    hard_time_limit = ideal_time * 5;
+  // Calculate the ideal time for this move.
+  int ideal_time = (remaining_time / moves_to_go) + (increment / 2);
 
-    // But never let the hard limit exceed our safe time.
-    if (hard_time_limit > safe_time) {
-        hard_time_limit = safe_time;
-    }
+  // Our soft target is the ideal time.
+  soft_time_limit = ideal_time;
 
-    // The allocated_time is the hard limit that the minmax function will use to force a stop.
-    // We leave a small buffer to ensure we don't lose on time.
-    allocated_time = hard_time_limit > 50 ? hard_time_limit - 50 : 0;
+  // The hard limit is much larger, giving us flexibility.
+  hard_time_limit = ideal_time * 2;
+
+  // But never let the hard limit exceed our safe time.
+  if (hard_time_limit > safe_time) {
+    hard_time_limit = safe_time;
+  }
+
+  // The allocated_time is the hard limit that the minmax function will use to force a stop.
+  // We leave a small buffer to ensure we don't lose on time.
+  allocated_time = hard_time_limit > 50 ? hard_time_limit - 50 : 0;
 }
 
 void Engine::clearKiller(){
@@ -423,7 +425,6 @@ std::string Engine::getBestMove() {
     std::cout << "\n";
 
 
-    // --- Corrected Time Management Check ---
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time).count();
 
@@ -431,9 +432,9 @@ std::string Engine::getBestMove() {
     if (elapsed_time >= soft_time_limit) {
         // If the best move has been unstable, give it a bit more time,
         // but only if we are not close to our hard limit.
-        if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 2) {
-            // Extend time by a small, fixed amount (e.g., 50% of the original soft limit)
-            soft_time_limit += soft_time_limit * 0.5;
+        if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
+            // Extend time by a small, fixed amount (e.g., 30% of the original soft limit)
+            soft_time_limit += soft_time_limit * 0.3;
             best_move_changes = 0; // Reset counter for the next potential extension
         } else {
             // Otherwise, the search is stable enough or we are out of time, so stop.
