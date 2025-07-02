@@ -30,10 +30,15 @@ void Engine::orderMoves(Movelist &moves, Move ttMove, int ply){
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
-      score = 0;
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
       score += 100 * getPieceValue(victim) - getPieceValue(attacker);
+    }
+    else {
+      Piece movingPiece = board.at(move.from());
+      int pieceIndex = static_cast<int>(movingPiece);
+      int squareIndex = move.to().index();
+      score += historyTable[pieceIndex][squareIndex]; 
     }
 
     // Prioritize promotions
@@ -114,64 +119,44 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
-  int bestScore;
+  int bestScore = isMaximizing ? -MATE_SCORE : MATE_SCORE;
 
-  if (isMaximizing) {
-    bestScore = -MATE_SCORE;
+  for (Move move : moves) {
+    board.makeMove(move);
+    std::vector<Move> childPv;
+    int eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+    board.unmakeMove(move);
 
-    for (Move move : moves) {
-      board.makeMove(move);
-      std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, false, childPv, ply+1);
-      board.unmakeMove(move);
-
+    if (isMaximizing) {
       if (eval > bestScore) {
         bestScore = eval;
         bestMove = move;
         pv = {move};
         pv.insert(pv.end(), childPv.begin(), childPv.end());
       }
-
       alpha = std::max(bestScore, alpha);
-
-      if (beta <= alpha){
-        // If a move caused a cuoff it would likely be a good candidate.
-        if(!board.isCapture(move)){
-          // Shifting the old move 
-          killerMoves[ply][1] = killerMoves[ply][0];
-          killerMoves[ply][0] = move;
-        }
-        break;
-      };
-    }
-
-  } else {
-    bestScore = MATE_SCORE;
-
-    for (Move move : moves) {
-      board.makeMove(move);
-      std::vector<Move> childPv;
-      int eval = minmax(depth - 1, alpha, beta, true, childPv, ply+1);
-      board.unmakeMove(move);
-
+    } else {
       if (eval < bestScore) {
         bestScore = eval;
         bestMove = move;
         pv = {move};
         pv.insert(pv.end(), childPv.begin(), childPv.end());
       }
-
       beta = std::min(bestScore, beta);
+    }
 
-      if (beta <= alpha){
-        // If a move caused a cuoff it would likely be a good candidate.
-        if(!board.isCapture(move)){
-          // Shifting the old move 
-          killerMoves[ply][1] = killerMoves[ply][0];
-          killerMoves[ply][0] = move;
-        }
-        break;
-      };
+    // Beta-cutoff
+    if (alpha >= beta) {
+      if (!board.isCapture(move)) {
+        // This quiet move caused a cutoff. We reward it by updating
+        // the killer moves and history table.
+        killerMoves[ply][1] = killerMoves[ply][0];
+        killerMoves[ply][0] = move;
+
+        Piece movingPiece = board.at(move.from());
+        updateHistoryScore(movingPiece, move.to(), depth);
+      }
+      break;
     }
   }
 
@@ -354,6 +339,19 @@ void Engine::clearKiller(){
   }
 }
 
+void Engine::clearHistoryTable(){
+  for (int i = 0; i < 12; ++i) {
+    for (int j = 0; j < 64; ++j) {
+      historyTable[i][j] = 0;
+    }
+  }
+}
+
+void Engine::updateHistoryScore(chess::Piece piece, chess::Square to, int depth){
+  int pieceIndex = static_cast<int>(piece);
+  historyTable[pieceIndex][to.index()] += depth*depth;
+}
+
 std::string Engine::getBestMove() {
   stopSearchFlag = false;
   if (isGameOver()) {
@@ -368,6 +366,7 @@ std::string Engine::getBestMove() {
   best_move_changes = 0;
   last_iteration_best_move = Move::NULL_MOVE;
   clearKiller();
+  clearHistoryTable();
 
   bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;

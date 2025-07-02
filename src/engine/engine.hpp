@@ -77,6 +77,12 @@ class Engine {
   void storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove);
   bool probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove, int ply);
 
+  // History Table
+  // 12 pieces 6 of each type and 64 squares.
+  int historyTable[12][64];
+  void clearHistoryTable();
+  void updateHistoryScore(chess::Piece piece, chess::Square to, int depth);
+
   // Evaluation
   int evaluate(int ply);
   void evaluatePST(int& eval, bool isEndgame);
