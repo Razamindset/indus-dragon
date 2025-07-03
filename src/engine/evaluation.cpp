@@ -60,8 +60,8 @@ int Engine::evaluate(int ply) {
 
   // Castling bonus (opening/middlegame only)
   if (!isEndgame) {
-    if (hasCastled(Color::WHITE)) eval += 50;
-    if (hasCastled(Color::BLACK)) eval -= 50;
+    if (hasCastled(Color::WHITE)) eval += 20;
+    if (hasCastled(Color::BLACK)) eval -= 20;
   }
 
   evaluatePST(eval, isEndgame);
@@ -126,10 +126,10 @@ void Engine::evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const c
 
       // 1. Doubled pawns penalty
       if (whitePawnsOnFileCount > 1) {
-          eval -= 20 * (whitePawnsOnFileCount - 1);
+          eval -= 15 * (whitePawnsOnFileCount - 1);
       }
       if (blackPawnsOnFileCount > 1) {
-          eval += 20 * (blackPawnsOnFileCount - 1);
+          eval += 15 * (blackPawnsOnFileCount - 1);
       }
 
       // 2. Isolated pawns penalty
@@ -148,14 +148,14 @@ void Engine::evaluatePawns(int& eval, const chess::Bitboard& whitePawns, const c
       while(whitePawnsOnFile) {
           Square sq = whitePawnsOnFile.pop();
           if (isPassedPawn(sq, Color::WHITE, blackPawns)) {
-              eval += 20 * (sq.rank() - 1);
+              eval += 15 * (sq.rank() - 1);
           }
       }
 
       while(blackPawnsOnFile) {
           Square sq = blackPawnsOnFile.pop();
           if (isPassedPawn(sq, Color::BLACK, whitePawns)) {
-              eval -= 20 * (6 - sq.rank());
+              eval -= 15 * (6 - sq.rank());
           }
       }
   }

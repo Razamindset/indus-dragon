@@ -268,8 +268,6 @@ void Engine::orderQuiescMoves(Movelist& moves) {
 }
 
 void Engine::calculateSearchTime() {
-
-
   // Handle "go infinite" - when no time controls are given.
   if (movetime <= 0 && wtime <= 0 && btime <= 0) {
     // Set time limits to a very large value to simulate infinity.
