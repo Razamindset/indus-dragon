@@ -1,3 +1,1 @@
-1. Add killer moves and history heuristics for better perf.
-2. Add pruning techniques in Quiscience search.
-3. Add more dynamic time management alogos.
+1. Add things like null move pruning. Delta pruning aspiration windows etc. So we can reach higher depths

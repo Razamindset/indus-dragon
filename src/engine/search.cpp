@@ -69,7 +69,7 @@ void Engine::orderMoves(Movelist &moves, Move ttMove, int ply){
 
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move>& pv, int ply) {
   if (stopSearchFlag) {
-    return 0;  // Return a neutral score if search is stopped
+    return 0;
   }
 
   if (time_controls_enabled) {
@@ -85,6 +85,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   }
 
   positionsSearched++;
+  pv.clear();
 
   if(depth == 0 || isGameOver()){
     return quiescenceSearch(alpha, beta, isMaximizing, ply);
@@ -95,17 +96,12 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   Move ttMove = Move::NULL_MOVE;
   int originalAlpha = alpha;
 
+  // We will also do a a serach for the TT move so we can efficiently construct the pv line
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply)) {
-    // If we have an EXACT TT hit, we can reconstruct the PV
     if (transpositionTable.at(boardhash).type == TTEntryType::EXACT && ttMove != Move::NULL_MOVE) {
-      pv.clear();
       pv.push_back(ttMove);
-      // Recursively get the rest of the PV by making the move and calling minmax
-      // with a reduced depth. This is a "PV-reconstruction" search.
       board.makeMove(ttMove);
       std::vector<Move> childPv;
-      // Call minmax with depth - 1 and the same alpha/beta window.
-      // The score from this recursive call is not used, only the childPv.
       minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
       board.unmakeMove(ttMove);
       pv.insert(pv.end(), childPv.begin(), childPv.end());
@@ -115,18 +111,45 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 
   Movelist moves;
   movegen::legalmoves(moves, board);
-
   orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
   int bestScore = isMaximizing ? -MATE_SCORE : MATE_SCORE;
 
-  for (Move move : moves) {
-    board.makeMove(move);
+  for (int i = 0; i < moves.size(); ++i) {
+    Move move = moves[i];
+    board.makeMove(move); // Make the move
+
     std::vector<Move> childPv;
-    int eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+    int eval;
+
+    //* PVS - Principal Variation Search
+    // We do a full search for the first move. Considering it is the best move.
+    // Then we take a sneak peak at the other moves with a reduced window to see if they are promising.
+    // If yes then we redo a full search for them.
+    if (isMaximizing) {
+      if (i == 0) { // Full search for the first move
+        eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+      } else { // Zero-window search for other moves
+        eval = minmax(depth - 1, alpha, alpha + 1, !isMaximizing, childPv, ply + 1);
+        if (eval > alpha && eval < beta) { // If it's promising, re-search with a full window
+          eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+        }
+      }
+    } else { // Minimizing
+      if (i == 0) { // Full search for the first move
+        eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+      } else { // Zero-window search for other moves
+        eval = minmax(depth - 1, beta - 1, beta, !isMaximizing, childPv, ply + 1);
+        if (eval < beta && eval > alpha) { // If it's promising, re-search with a full window
+          eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+        }
+      }
+    }
+
     board.unmakeMove(move);
 
+    // --- Update best score and PV ---
     if (isMaximizing) {
       if (eval > bestScore) {
         bestScore = eval;
@@ -145,14 +168,11 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
       beta = std::min(bestScore, beta);
     }
 
-    // Beta-cutoff
+    // --- Alpha-beta cutoff ---
     if (alpha >= beta) {
       if (!board.isCapture(move)) {
-        // This quiet move caused a cutoff. We reward it by updating
-        // the killer moves and history table.
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
-
         Piece movingPiece = board.at(move.from());
         updateHistoryScore(movingPiece, move.to(), depth);
       }
@@ -160,14 +180,14 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     }
   }
 
-  // Store the entries in the transposition table
+  // Store the entries as exact, upper or lower
   TTEntryType entryType;
   if (bestScore <= originalAlpha) {
-    entryType = TTEntryType::UPPER; // All moves were <= alpha (fail-low)
+    entryType = TTEntryType::UPPER;
   } else if (bestScore >= beta) {
-    entryType = TTEntryType::LOWER; // bestScore >= beta (fail-high)
-  }else {
-    entryType = TTEntryType::EXACT; // Exact score within alpha-beta window
+    entryType = TTEntryType::LOWER;
+  } else {
+    entryType = TTEntryType::EXACT;
   }
 
   storeTT(boardhash, depth, bestScore, entryType, bestMove);
