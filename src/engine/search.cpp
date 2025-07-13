@@ -123,6 +123,26 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     std::vector<Move> childPv;
     int eval;
 
+    // Todo: Add Late move reduction.
+    // Moves that occur late in the list are first searched with a shalow depth similar to PVS
+
+    // Todo: Add Null move pruning
+    // Give the opponent 2 moves in a row and if still u are better than donot search
+
+    // Todo: Add Fulfility pruning
+    // StandPat + fulfility margin < alpha then prune this.
+
+    // Todo: Add Delta pruning
+
+    // Todo: Improve the quiescience search by adding pruning techniques or tables.
+    // Modern engines use tts in quiescence search but we are not at that point i believe but i will try.
+    // We can try adding some pruning techniques as defined above but until we have a full fleged evaluation function it would be dangerous.
+    // We can add a depth limit to our quiescience search. I tried it but just made the engine worse. It was missing stuff.
+    
+    // Todo: Create a full fleged evlauation function.
+    // Evaluation function should consider each type of piece separetely
+    // Some other stuff to improve the eval...
+    
     //* PVS - Principal Variation Search
     // We do a full search for the first move. Considering it is the best move.
     // Then we take a sneak peak at the other moves with a reduced window to see if they are promising.
