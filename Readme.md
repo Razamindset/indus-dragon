@@ -52,7 +52,7 @@ After building, you can run the engine from the build directory:
 
 **⚠️ Important Notice ⚠️**
 
-The engine has been updated to use extended search to reach quiet positions howevver a lot of work is reamaining. the engine also has a simple time management where it uses 1/20 of remaining time to find the best move which needs to be made more dynamic. Also, The next steps will be improving perf and evaluation.
+The engine is constantly changing and improving. It is very possible that a single commit improves or breaks something. As small parameters to different stratigies can change the overall output. We expect u to share your suggestions and findings with us.
 
 ---
 
