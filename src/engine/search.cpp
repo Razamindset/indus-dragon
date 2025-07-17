@@ -414,8 +414,19 @@ std::string Engine::getBestMove() {
         last_iteration_best_move = bestMove;
     }
 
-    // --- UCI Info Output (your existing code is fine here) ---
-    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " score ";
+    // Elapsed Time and NPS
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time).count();
+    
+    long long nps = 0;
+
+    if (elapsed_time > 0) { 
+      // Calculate nodes per second as (nodes / milliseconds) * 1000
+      nps = (positionsSearched * 1000) / elapsed_time;
+    }
+
+    // UCI output
+    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time " << elapsed_time << " nps " << nps << " score ";
 
     if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
       int movesToMate;
@@ -444,9 +455,6 @@ std::string Engine::getBestMove() {
     }
     std::cout << std::endl;
 
-
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time).count();
 
     // Check if we should stop.
     if (elapsed_time >= soft_time_limit) {
