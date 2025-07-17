@@ -1,44 +1,40 @@
 #include "engine.hpp"
 
 void Engine::printTTStats() const {
-  std::cout << "Transposition Table Stats:";
-  std::cout << "  TT Hits       : " << ttHits << "";
-  std::cout << "  TT Collisions : " << ttCollisions << "";
-  std::cout << "  TT Stores     : " << ttStores << "";
-  std::cout << "  TT Size       : " << transpositionTable.size() << " / " << MAX_TT_ENTRIES << "";
+  std::cout << "Transposition Table Stats:\n";
+  std::cout << "  TT Hits       : " << ttHits << "\n";
+  std::cout << "  TT Collisions : " << ttCollisions << "\n";
+  std::cout << "  TT Stores     : " << ttStores << "\n";
+  std::cout << "  TT Size       : " << transpositionTable.size() << " / "
+            << MAX_TT_ENTRIES << "\n";
 }
 
-bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, Move& bestMove, int ply){
+bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
+                     Move &bestMove, int ply) {
   auto it = transpositionTable.find(hash);
-
-  if(it == transpositionTable.end()){
+  if (it == transpositionTable.end() || it->second.hash != hash) {
     return false;
   }
 
   const TTEntry entry = it->second;
   ttHits++;
-
-  // Always extract the best move for move ordering even if the entry is unusable
   bestMove = entry.bestMove;
 
-  // Check if the depth is acceptable
-  if(entry.depth >= depth){
-    // The score in the TT is already adjusted for ply from the search that stored it.
-    // No further adjustment is needed here.
+  if (entry.depth >= depth) {
     int tt_score = entry.score;
+    if (abs(tt_score) >= MATE_SCORE - MATE_THRESHHOLD) {
+      tt_score += (tt_score > 0 ? -ply : ply); // Adjust for current ply
+    }
 
-    //* Check if:
-    // The score is with in the window or
-    // The score can cause an alpha or beta cutoff.
-    if(entry.type == TTEntryType::EXACT){
+    if (entry.type == TTEntryType::EXACT) {
       score = tt_score;
       return true;
     }
-    if(entry.type == TTEntryType::LOWER && tt_score >= beta){
+    if (entry.type == TTEntryType::LOWER && tt_score >= beta) {
       score = tt_score;
       return true;
     }
-    if(entry.type == TTEntryType::UPPER && tt_score <= alpha){
+    if (entry.type == TTEntryType::UPPER && tt_score <= alpha) {
       score = tt_score;
       return true;
     }
@@ -47,31 +43,37 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
   return false;
 }
 
-void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type, Move bestMove) {
-    auto it = transpositionTable.find(hash);
+void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type,
+                     Move bestMove, int ply) {
+  int adjustedScore = score;
+  if (abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
+    adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
+  }
 
-    if (it != transpositionTable.end()) {
-        // Entry exists, update if new entry has greater or equal depth
-        if (depth >= it->second.depth) {
-            it->second = {hash, score, depth, type, bestMove};
-            ttStores++;
-        } else {
-            ttCollisions++;
-        }
+  auto it = transpositionTable.find(hash);
+  if (it != transpositionTable.end()) {
+    if (depth >= it->second.depth) {
+      it->second = {hash, adjustedScore, depth, type, bestMove};
+      ttStores++;
     } else {
-        // Entry does not exist, add if table is not full
-        if (transpositionTable.size() < MAX_TT_ENTRIES) {
-            transpositionTable[hash] = {hash, score, depth, type, bestMove};
-            ttStores++;
-        } else {
-            // Table is full, implement a replacement strategy
-            // For now, we will use a simple random replacement
-            auto toErase = transpositionTable.begin();
-            std::advance(toErase, rand() % transpositionTable.size());
-            transpositionTable.erase(toErase);
-
-            transpositionTable[hash] = {hash, score, depth, type, bestMove};
-            ttStores++;
-        }
+      ttCollisions++;
     }
+  } else {
+    if (transpositionTable.size() < MAX_TT_ENTRIES) {
+      transpositionTable[hash] = {hash, adjustedScore, depth, type, bestMove};
+      ttStores++;
+    } else {
+      // Depth-based replacement
+      auto toErase = transpositionTable.begin();
+      for (auto it = transpositionTable.begin(); it != transpositionTable.end();
+           ++it) {
+        if (it->second.depth < toErase->second.depth) {
+          toErase = it;
+        }
+      }
+      transpositionTable.erase(toErase);
+      transpositionTable[hash] = {hash, adjustedScore, depth, type, bestMove};
+      ttStores++;
+    }
+  }
 }
