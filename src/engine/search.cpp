@@ -442,7 +442,7 @@ std::string Engine::getBestMove() {
     for (const auto& move : bestLine) {
       std::cout << move << " ";
     }
-    std::cout << "\n";
+    std::cout << std::endl;
 
 
     auto current_time = std::chrono::steady_clock::now();
