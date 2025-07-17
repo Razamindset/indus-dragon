@@ -87,7 +87,11 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   positionsSearched++;
   pv.clear();
 
-  if(depth == 0 || isGameOver()){
+  if (isGameOver()) {
+    return evaluate(ply);
+  }
+
+  if(depth == 0){
     return quiescenceSearch(alpha, beta, isMaximizing, ply);
   }
 
