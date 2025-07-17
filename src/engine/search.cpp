@@ -73,6 +73,10 @@ void Engine::orderMoves(Movelist &moves, Move ttMove, int ply) {
 
 int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
                    std::vector<Move> &pv, int ply) {
+  if (stopSearchFlag) {
+    return INCOMPLETE_SEARCH;
+  }
+
   if (time_controls_enabled) {
     auto current_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -80,11 +84,8 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
                             .count();
     if (elapsed_time >= allocated_time) {
       stopSearchFlag = true;
+      return INCOMPLETE_SEARCH;
     }
-  }
-
-  if (stopSearchFlag) {
-    return INCOMPLETE_SEARCH;
   }
 
   positionsSearched++;
@@ -103,18 +104,16 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
   Move ttMove = Move::NULL_MOVE;
   int originalAlpha = alpha;
 
-  // We will also do a a serach for the TT move so we can efficiently construct
-  // the pv line
+  // Look at this tommorrow
   if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply)) {
-    if (ttMove != Move::NULL_MOVE) {
+    if (transpositionTable.at(boardhash).type == TTEntryType::EXACT &&
+        ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
-      if (transpositionTable.at(boardhash).type == TTEntryType::EXACT) {
-        board.makeMove(ttMove);
-        std::vector<Move> childPv;
-        minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
-        board.unmakeMove(ttMove);
-        pv.insert(pv.end(), childPv.begin(), childPv.end());
-      }
+      board.makeMove(ttMove);
+      std::vector<Move> childPv;
+      minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+      board.unmakeMove(ttMove);
+      pv.insert(pv.end(), childPv.begin(), childPv.end());
     }
     return ttScore;
   }
@@ -128,47 +127,16 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
 
   for (int i = 0; i < moves.size(); ++i) {
     Move move = moves[i];
-    board.makeMove(move); // Make the move
+    board.makeMove(move);
 
     std::vector<Move> childPv;
-    int eval;
-
-    // Todo: Add Late move reduction.
-    // Moves that occur late in the list are first searched with a shalow depth
-    // similar to PVS
-
-    // Todo: Add Null move pruning
-    // Give the opponent 2 moves in a row and if still u are better than donot
-    // search
-
-    // Todo: Add Fulfility pruning
-    // StandPat + fulfility margin < alpha then prune this.
-
-    // Todo: Add Delta pruning
-
-    // Todo: Improve the quiescience search by adding pruning techniques or
-    // tables. Modern engines use tts in quiescence search but we are not at
-    // that point i believe but i will try. We can try adding some pruning
-    // techniques as defined above but until we have a full fleged evaluation
-    // function it would be dangerous. We can add a depth limit to our
-    // quiescience search. I tried it but just made the engine worse. It was
-    // missing stuff.
-
-    // Todo: Create a full fleged evlauation function.
-    // Evaluation function should consider each type of piece separetely
-    // Some other stuff to improve the eval...
-
-    // ! After some testing I found out that PVS was making the engine faster
-    // but not stronger so it is not in use for now
-    //* PVS - Principal Variation Search
-    // We do a full search for the first move. Considering it is the best move.
-    // Then we take a sneak peak at the other moves with a reduced window to see
-    // if they are promising. If yes then we redo a full search for them.
-
-    eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+    int eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
     board.unmakeMove(move);
 
-    // --- Update best score and PV ---
+    if (eval == INCOMPLETE_SEARCH) {
+      return INCOMPLETE_SEARCH;
+    }
+
     if (isMaximizing) {
       if (eval > bestScore) {
         bestScore = eval;
@@ -187,7 +155,6 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
       beta = std::min(bestScore, beta);
     }
 
-    // --- Alpha-beta cutoff ---
     if (alpha >= beta) {
       if (!board.isCapture(move)) {
         killerMoves[ply][1] = killerMoves[ply][0];
@@ -199,7 +166,6 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
     }
   }
 
-  // Store the entries as exact, upper or lower
   TTEntryType entryType;
   if (bestScore <= originalAlpha) {
     entryType = TTEntryType::UPPER;
@@ -209,7 +175,9 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
     entryType = TTEntryType::EXACT;
   }
 
-  storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
+  if (bestMove != Move::NULL_MOVE) {
+    storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
+  }
 
   return bestScore;
 }

@@ -22,7 +22,7 @@ bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
 
   if (entry.depth >= depth) {
     int tt_score = entry.score;
-    if (abs(tt_score) >= MATE_SCORE - MATE_THRESHHOLD) {
+    if (std::abs(tt_score) >= MATE_SCORE - MATE_THRESHHOLD) {
       tt_score += (tt_score > 0 ? -ply : ply); // Adjust for current ply
     }
 
@@ -46,7 +46,7 @@ bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
 void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type,
                      Move bestMove, int ply) {
   int adjustedScore = score;
-  if (abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
+  if (std::abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
     adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
   }
 
