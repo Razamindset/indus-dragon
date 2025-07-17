@@ -143,30 +143,13 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     // Evaluation function should consider each type of piece separetely
     // Some other stuff to improve the eval...
     
+    // ! After some testing I found out that PVS was making the engine faster but not stronger so it is not in use for now
     //* PVS - Principal Variation Search
     // We do a full search for the first move. Considering it is the best move.
     // Then we take a sneak peak at the other moves with a reduced window to see if they are promising.
     // If yes then we redo a full search for them.
-    if (isMaximizing) {
-      if (i == 0) { // Full search for the first move
-        eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
-      } else { // Zero-window search for other moves
-        eval = minmax(depth - 1, alpha, alpha + 1, !isMaximizing, childPv, ply + 1);
-        if (eval > alpha && eval < beta) { // If it's promising, re-search with a full window
-          eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
-        }
-      }
-    } else { // Minimizing
-      if (i == 0) { // Full search for the first move
-        eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
-      } else { // Zero-window search for other moves
-        eval = minmax(depth - 1, beta - 1, beta, !isMaximizing, childPv, ply + 1);
-        if (eval < beta && eval > alpha) { // If it's promising, re-search with a full window
-          eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
-        }
-      }
-    }
-
+    
+    eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
     board.unmakeMove(move);
 
     // --- Update best score and PV ---

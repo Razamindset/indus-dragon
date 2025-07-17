@@ -23,27 +23,23 @@ bool Engine::probeTT(uint64_t hash, int depth, int& score, int alpha, int beta, 
 
   // Check if the depth is acceptable
   if(entry.depth >= depth){
-    int adjustedScore = entry.score;
-
-    if (entry.score > MATE_SCORE - MATE_THRESHHOLD) {
-        adjustedScore -= ply;
-    } else if (entry.score < -MATE_SCORE + MATE_THRESHHOLD) {
-        adjustedScore += ply;
-    }
+    // The score in the TT is already adjusted for ply from the search that stored it.
+    // No further adjustment is needed here.
+    int tt_score = entry.score;
 
     //* Check if:
     // The score is with in the window or
     // The score can cause an alpha or beta cutoff.
     if(entry.type == TTEntryType::EXACT){
-      score = adjustedScore;
+      score = tt_score;
       return true;
     }
-    else if(entry.type == TTEntryType::LOWER && entry.score >= beta){ 
-      score = adjustedScore;
+    if(entry.type == TTEntryType::LOWER && tt_score >= beta){
+      score = tt_score;
       return true;
     }
-    else if(entry.type == TTEntryType::UPPER && entry.score <= alpha){
-      score = adjustedScore;
+    if(entry.type == TTEntryType::UPPER && tt_score <= alpha){
+      score = tt_score;
       return true;
     }
   }
