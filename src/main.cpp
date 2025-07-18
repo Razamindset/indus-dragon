@@ -1,5 +1,10 @@
+/*
+This file is part of Indus Dragon Chess Engine.
+It defines a UCI Adapter that is used to communicate commands to the engine.
+*/
+
 #include <atomic>
-#include <fstream> // FIXED: Added missing header for file operations
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -9,7 +14,6 @@
 
 class UCIAdapter {
 private:
-  // Pointer to your engine
   Engine *engine;
 
   std::thread searchThread;

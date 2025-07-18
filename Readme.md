@@ -50,6 +50,10 @@ After building, you can run the engine from the build directory:
 ./indus-dragon
 ```
 
+## Contributing
+
+See CONTRIBUTING.md
+
 **⚠️ Important Notice ⚠️**
 
 The engine is constantly changing and improving. It is very possible that a single commit improves or breaks something. As small parameters to different stratigies can change the overall output. We expect u to share your suggestions and findings with us.

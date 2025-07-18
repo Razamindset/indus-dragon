@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "../chess-library/include/chess.hpp"
+#include "chess.hpp"
 
 constexpr int MATE_SCORE = 1000000;
 constexpr int MATE_THRESHHOLD = 100;

@@ -22,7 +22,7 @@ set(SOURCES
 # Define header files
 set(HEADERS
     src/engine/engine.hpp
-    src/chess-library/include/chess.hpp
+    src/engine/chess.hpp
 )
 
 # Create executable
