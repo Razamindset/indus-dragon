@@ -8,25 +8,8 @@
 #include <unordered_map>
 
 #include "chess.hpp"
-
-constexpr int MATE_SCORE = 1000000;
-constexpr int MATE_THRESHHOLD = 100;
-constexpr int DRAW_SCORE = 0;
-// Around 1 million entries for 64 bites each
-constexpr size_t MAX_TT_ENTRIES = 1 << 20;
-
-// For stop search Flag
-constexpr int INCOMPLETE_SEARCH = INT_MIN;
-
-// MAX search depth
-constexpr int MAX_SEARCH_DEPTH = 12;
-
-// Material values
-constexpr int PAWN_VALUE = 100;
-constexpr int KNIGHT_VALUE = 300;
-constexpr int BISHOP_VALUE = 320;
-constexpr int ROOK_VALUE = 500;
-constexpr int QUEEN_VALUE = 900;
+#include "constants.hpp"
+#include "evaluation.hpp"
 
 using namespace chess;
 
@@ -49,6 +32,9 @@ struct TTEntry {
 class Engine {
 private:
   Board board;
+
+  Evaluation evaluator;
+
   std::atomic<bool> stopSearchFlag{false};
   int getPieceValue(Piece piece);
   long long positionsSearched = 0;
@@ -88,17 +74,7 @@ private:
   void clearHistoryTable();
   void updateHistoryScore(chess::Piece piece, chess::Square to, int depth);
 
-  // Evaluation
   int evaluate(int ply);
-  void evaluatePST(int &eval, bool isEndgame);
-  void evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
-                     const chess::Bitboard &blackPawns);
-  void evaluateKingEndgameScore(int &eval);
-  bool hasCastled(Color color);
-  bool isPassedPawn(Square sq, Color color, const chess::Bitboard &pawns);
-  inline int manhattanDistance(Square s1, Square s2) {
-    return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
-  }
 
   // Search
   int minmax(int depth, int alpha, int beta, bool isMaximizing,
@@ -122,16 +98,15 @@ public:
   std::string getBestMove();
 
   //* Game state related
-  bool isGameOver() {
+  bool isGameOver(const chess::Board &board) {
     auto result = board.isGameOver();
-    return result.second != GameResult::NONE;
+    return result.second != chess::GameResult::NONE;
   }
 
-  GameResultReason getGameOverReason() {
+  GameResultReason getGameOverReason(const chess::Board &board) {
     auto result = board.isGameOver();
     return result.first;
   }
-
   // Move making used when the chess gui gives a list of move history. use this
   // to set the board state correctly
   void makeMove(std::string move);

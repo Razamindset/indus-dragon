@@ -22,6 +22,7 @@ set(SOURCES
 # Define header files
 set(HEADERS
     src/engine/engine.hpp
+    src/engine/evaluation.hpp
     src/engine/chess.hpp
 )
 

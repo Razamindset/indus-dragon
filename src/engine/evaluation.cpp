@@ -1,8 +1,9 @@
-#include "engine.hpp"
+#include "evaluation.hpp"
+#include "constants.hpp"
 #include "piece-maps.hpp"
 
 // Evaluation related functions
-bool Engine::hasCastled(Color color) {
+bool Evaluation::hasCastled(const chess::Board &board, chess::Color color) {
   Square kingSq = board.pieces(PieceType::KING, color).lsb();
 
   if (color == Color::WHITE)
@@ -11,18 +12,7 @@ bool Engine::hasCastled(Color color) {
     return kingSq.index() == 62 || kingSq.index() == 58; // G8 or C8
 }
 
-int Engine::evaluate(int ply) {
-  if (isGameOver()) {
-    if (getGameOverReason() == GameResultReason::CHECKMATE) {
-      if (board.sideToMove() == Color::WHITE) {
-        return -MATE_SCORE + ply;
-      } else {
-        return MATE_SCORE - ply;
-      }
-    }
-    return DRAW_SCORE;
-  }
-
+int Evaluation::evaluate(const chess::Board &board) {
   int eval = 0;
 
   // Initialize all bitboards once
@@ -59,25 +49,26 @@ int Engine::evaluate(int ply) {
 
   // Castling bonus (opening/middlegame only)
   if (!isEndgame) {
-    if (hasCastled(Color::WHITE))
+    if (hasCastled(board, Color::WHITE))
       eval += 20;
-    if (hasCastled(Color::BLACK))
+    if (hasCastled(board, Color::BLACK))
       eval -= 20;
   }
 
-  evaluatePST(eval, isEndgame);
+  evaluatePST(board, eval, isEndgame);
 
   evaluatePawns(eval, whitePawns, blackPawns);
 
   if (isEndgame) {
-    evaluateKingEndgameScore(eval);
+    evaluateKingEndgameScore(board, eval);
   }
 
   return eval;
 }
 
 // Add values from piece square tables
-void Engine::evaluatePST(int &eval, bool isEndgame) {
+void Evaluation::evaluatePST(const chess::Board &board, int &eval,
+                             bool isEndgame) {
   for (int sq = 0; sq < 64; sq++) {
     Piece piece = board.at(Square(sq));
     if (piece == PieceType::NONE)
@@ -113,8 +104,8 @@ void Engine::evaluatePST(int &eval, bool isEndgame) {
 
 //! This function is Ai generated I don't want to get stuck in bitboards for
 //! now. I hope it works
-void Engine::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
-                           const chess::Bitboard &blackPawns) {
+void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
+                               const chess::Bitboard &blackPawns) {
   chess::Bitboard fileBB;
 
   for (int file = 0; file < 8; ++file) {
@@ -165,8 +156,8 @@ void Engine::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
 }
 
 //! This function is Ai generated
-bool Engine::isPassedPawn(Square sq, Color color,
-                          const chess::Bitboard &opponentPawns) {
+bool Evaluation::isPassedPawn(Square sq, Color color,
+                              const chess::Bitboard &opponentPawns) {
   int file = sq.file();
   int rank = sq.rank();
 
@@ -194,7 +185,8 @@ bool Engine::isPassedPawn(Square sq, Color color,
 }
 
 // Calculate King endgame score
-void Engine::evaluateKingEndgameScore(int &eval) {
+void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
+                                          int &eval) {
   Square whiteKingSq = board.kingSq(Color::WHITE);
   Square blackKingSq = board.kingSq(Color::BLACK);
 

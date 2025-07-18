@@ -47,3 +47,17 @@ int Engine::getPieceValue(Piece piece) {
     return 0; // King has no material value
   }
 }
+
+int Engine::evaluate(int ply) {
+  if (isGameOver(board)) {
+    if (getGameOverReason(board) == GameResultReason::CHECKMATE) {
+      if (board.sideToMove() == Color::WHITE) {
+        return -MATE_SCORE + ply;
+      } else {
+        return MATE_SCORE - ply;
+      }
+    }
+    return DRAW_SCORE;
+  }
+  return evaluator.evaluate(board);
+}

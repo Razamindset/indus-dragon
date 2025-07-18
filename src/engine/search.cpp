@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "utils.hpp"
 
 /* Order moves based on their priority */
 void Engine::orderMoves(Movelist &moves, Move ttMove, int ply) {
@@ -91,7 +92,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
   positionsSearched++;
   pv.clear();
 
-  if (isGameOver()) {
+  if (isGameOver(board)) {
     return evaluate(ply);
   }
 
@@ -189,7 +190,7 @@ int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
   }
   positionsSearched++;
 
-  if (isGameOver()) {
+  if (isGameOver(board)) {
     return evaluate(ply);
   }
 
@@ -360,7 +361,7 @@ void Engine::updateHistoryScore(chess::Piece piece, chess::Square to,
 
 std::string Engine::getBestMove() {
   stopSearchFlag = false;
-  if (isGameOver()) {
+  if (isGameOver(board)) {
     return "";
   }
   int maxDepth = MAX_SEARCH_DEPTH;
