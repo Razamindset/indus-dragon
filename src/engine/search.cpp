@@ -103,12 +103,13 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
   uint64_t boardhash = board.hash();
   int ttScore = 0;
   Move ttMove = Move::NULL_MOVE;
+  TTEntryType entry_type;
   int originalAlpha = alpha;
 
   // Look at this tommorrow
-  if (probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply)) {
-    if (transpositionTable.at(boardhash).type == TTEntryType::EXACT &&
-        ttMove != Move::NULL_MOVE) {
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply,
+                        entry_type)) {
+    if (entry_type == TTEntryType::EXACT && ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
       board.makeMove(ttMove);
       std::vector<Move> childPv;
@@ -177,7 +178,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
   }
 
   if (bestMove != Move::NULL_MOVE) {
-    storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
+    tt_helper.storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
   }
 
   return bestScore;

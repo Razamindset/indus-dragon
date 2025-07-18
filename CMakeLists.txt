@@ -23,6 +23,7 @@ set(SOURCES
 set(HEADERS
     src/engine/engine.hpp
     src/engine/evaluation.hpp
+    src/engine/tt.hpp
     src/engine/chess.hpp
 )
 

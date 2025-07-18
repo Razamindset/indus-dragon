@@ -1,5 +1,4 @@
-#ifndef ENGINE_HPP
-#define ENGINE_HPP
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -10,30 +9,17 @@
 #include "chess.hpp"
 #include "constants.hpp"
 #include "evaluation.hpp"
+#include "tt.hpp"
 
 using namespace chess;
-
-// Transposition table entry types
-enum class TTEntryType {
-  EXACT, // Exact score for the position
-  LOWER, // Lower bound (alpha cutoff)
-  UPPER  // Upper bound (beta cutoff)
-};
-
-// Structure for transposition table entries
-struct TTEntry {
-  uint64_t hash;    // Zobrist hash of the position
-  int score;        // Evaluation score
-  int depth;        // Depth at which the position was evaluated
-  TTEntryType type; // Type of entry
-  Move bestMove;    // Best move found for this position
-};
 
 class Engine {
 private:
   Board board;
 
   Evaluation evaluator;
+
+  TranspositionTable tt_helper;
 
   std::atomic<bool> stopSearchFlag{false};
   int getPieceValue(Piece piece);
@@ -57,16 +43,6 @@ private:
 
   std::chrono::steady_clock::time_point search_start_time;
   int allocated_time = 0;
-
-  // Transposition table
-  std::unordered_map<uint64_t, TTEntry> transpositionTable;
-  int ttHits = 0;       // Number of search matches
-  int ttCollisions = 0; // Number of overwrites
-  int ttStores = 0;     // Total stores
-  void storeTT(uint64_t hash, int depth, int score, TTEntryType type,
-               Move bestMove, int ply);
-  bool probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
-               Move &bestMove, int ply);
 
   // History Table
   // 12 pieces 6 of each type and 64 squares.
@@ -112,9 +88,4 @@ public:
   void makeMove(std::string move);
 
   void stopSearch() { stopSearchFlag = true; }
-
-  // table stats
-  void printTTStats() const;
 };
-
-#endif

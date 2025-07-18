@@ -1,6 +1,7 @@
-#include "engine.hpp"
+#include "tt.hpp"
+#include "constants.hpp"
 
-void Engine::printTTStats() const {
+void TranspositionTable::printTTStats() const {
   std::cout << "Transposition Table Stats:\n";
   std::cout << "  TT Hits       : " << ttHits << "\n";
   std::cout << "  TT Collisions : " << ttCollisions << "\n";
@@ -9,8 +10,9 @@ void Engine::printTTStats() const {
             << MAX_TT_ENTRIES << "\n";
 }
 
-bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
-                     Move &bestMove, int ply) {
+bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score,
+                                 int alpha, int beta, chess::Move &bestMove,
+                                 int ply, TTEntryType &entry_type) {
   auto it = transpositionTable.find(hash);
   if (it == transpositionTable.end() || it->second.hash != hash) {
     return false;
@@ -19,6 +21,7 @@ bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
   const TTEntry entry = it->second;
   ttHits++;
   bestMove = entry.bestMove;
+  entry_type = entry.type;
 
   if (entry.depth >= depth) {
     int tt_score = entry.score;
@@ -43,8 +46,9 @@ bool Engine::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
   return false;
 }
 
-void Engine::storeTT(uint64_t hash, int depth, int score, TTEntryType type,
-                     Move bestMove, int ply) {
+void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
+                                 TTEntryType type, chess::Move bestMove,
+                                 int ply) {
   int adjustedScore = score;
   if (std::abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
     adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
