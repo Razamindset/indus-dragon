@@ -28,22 +28,19 @@ int Evaluation::evaluate(const chess::Board &board) {
   auto blackQueens = board.pieces(PieceType::QUEEN, Color::BLACK);
 
   // Count material using the initialized bitboards
-  int whiteMaterial =
-      whitePawns.count() * PAWN_VALUE + whiteKnights.count() * KNIGHT_VALUE +
-      whiteBishops.count() * BISHOP_VALUE + whiteRooks.count() * ROOK_VALUE +
-      whiteQueens.count() * QUEEN_VALUE;
+  int whiteMaterial = whitePawns.count() * PAWN_VALUE + whiteKnights.count() * KNIGHT_VALUE +
+                      whiteBishops.count() * BISHOP_VALUE + whiteRooks.count() * ROOK_VALUE +
+                      whiteQueens.count() * QUEEN_VALUE;
 
-  int blackMaterial =
-      blackPawns.count() * PAWN_VALUE + blackKnights.count() * KNIGHT_VALUE +
-      blackBishops.count() * BISHOP_VALUE + blackRooks.count() * ROOK_VALUE +
-      blackQueens.count() * QUEEN_VALUE;
+  int blackMaterial = blackPawns.count() * PAWN_VALUE + blackKnights.count() * KNIGHT_VALUE +
+                      blackBishops.count() * BISHOP_VALUE + blackRooks.count() * ROOK_VALUE +
+                      blackQueens.count() * QUEEN_VALUE;
 
   eval += whiteMaterial - blackMaterial;
 
   // Better endgame detection based on total material
   int totalMaterial = whiteMaterial + blackMaterial;
-  bool isEndgame = totalMaterial <
-                   2500; // Endgame when less than ~25 points of material total
+  bool isEndgame = totalMaterial < 2500; // Endgame when less than ~25 points of material total
   // bool isOpening = totalMaterial > 6000; // Opening when more than ~60 points
   // of material total
 
@@ -67,8 +64,7 @@ int Evaluation::evaluate(const chess::Board &board) {
 }
 
 // Add values from piece square tables
-void Evaluation::evaluatePST(const chess::Board &board, int &eval,
-                             bool isEndgame) {
+void Evaluation::evaluatePST(const chess::Board &board, int &eval, bool isEndgame) {
   for (int sq = 0; sq < 64; sq++) {
     Piece piece = board.at(Square(sq));
     if (piece == PieceType::NONE)
@@ -91,8 +87,7 @@ void Evaluation::evaluatePST(const chess::Board &board, int &eval,
     } else if (piece == PieceType::QUEEN) {
       squareValue = QUEEN_TABLE[index];
     } else if (piece == PieceType::KING) {
-      squareValue =
-          isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+      squareValue = isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
     }
 
     // std::cout<<piece.color()<<" "<<piece.type()<<" Index: "<<index<<" Value:
@@ -102,8 +97,6 @@ void Evaluation::evaluatePST(const chess::Board &board, int &eval,
   }
 }
 
-//! This function is Ai generated I don't want to get stuck in bitboards for
-//! now. I hope it works
 void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
                                const chess::Bitboard &blackPawns) {
   chess::Bitboard fileBB;
@@ -155,9 +148,7 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
   }
 }
 
-//! This function is Ai generated
-bool Evaluation::isPassedPawn(Square sq, Color color,
-                              const chess::Bitboard &opponentPawns) {
+bool Evaluation::isPassedPawn(Square sq, Color color, const chess::Bitboard &opponentPawns) {
   int file = sq.file();
   int rank = sq.rank();
 
@@ -185,8 +176,7 @@ bool Evaluation::isPassedPawn(Square sq, Color color,
 }
 
 // Calculate King endgame score
-void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
-                                          int &eval) {
+void Evaluation::evaluateKingEndgameScore(const chess::Board &board, int &eval) {
   Square whiteKingSq = board.kingSq(Color::WHITE);
   Square blackKingSq = board.kingSq(Color::BLACK);
 
@@ -200,22 +190,18 @@ void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
   int blackKingRank = blackKingSq.rank();
 
   // Higher bonus for corner squares
-  if ((blackKingFile == 0 || blackKingFile == 7) &&
-      (blackKingRank == 0 || blackKingRank == 7)) {
+  if ((blackKingFile == 0 || blackKingFile == 7) && (blackKingRank == 0 || blackKingRank == 7)) {
     eval += 100;
   }
-  if ((whiteKingFile == 0 || whiteKingFile == 7) &&
-      (whiteKingRank == 0 || whiteKingRank == 7)) {
+  if ((whiteKingFile == 0 || whiteKingFile == 7) && (whiteKingRank == 0 || whiteKingRank == 7)) {
     eval -= 100;
   }
 
   // Bonus for being on the edges
-  if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 ||
-      blackKingRank == 7) {
+  if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 || blackKingRank == 7) {
     eval += 100;
   }
-  if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 ||
-      whiteKingRank == 7) {
+  if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 || whiteKingRank == 7) {
     eval -= 100;
   }
 }

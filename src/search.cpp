@@ -34,8 +34,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       score = 8500; // Slightly lower score for secondary killer
     }
 
-    // Todo Find a good way to check for checks can't use board.makemove() and
-    // then see if in check
+    // Todo Find a good way to check for checks because can't use board.makemove() and
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
@@ -82,7 +81,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
 int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move> &pv,
                    int ply) {
   if (stopSearchFlag) {
-    return INCOMPLETE_SEARCH;
+    return isMaximizing ? beta : alpha;
   }
 
   if (time_controls_enabled) {
@@ -92,7 +91,7 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
             .count();
     if (elapsed_time >= hard_time_limit) {
       stopSearchFlag = true;
-      return INCOMPLETE_SEARCH;
+      return isMaximizing ? beta : alpha;
     }
   }
 
@@ -140,10 +139,6 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     std::vector<Move> childPv;
     int eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
     board.unmakeMove(move);
-
-    if (eval == INCOMPLETE_SEARCH) {
-      return INCOMPLETE_SEARCH;
-    }
 
     if (isMaximizing) {
       if (eval > bestScore) {
@@ -193,7 +188,7 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
   if (stopSearchFlag) {
-    return INCOMPLETE_SEARCH;
+    return isMaximizing ? beta : alpha;
   }
   positionsSearched++;
 
@@ -316,11 +311,6 @@ std::string Search::searchBestMove() {
     std::vector<Move> currentBestLine;
 
     bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
-
-    // Check if incomplete search
-    if (bestEval == INCOMPLETE_SEARCH) {
-      break;
-    }
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag && currentDepth > 1) {
