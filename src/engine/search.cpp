@@ -73,17 +73,17 @@ void Engine::orderMoves(Movelist &moves, Move ttMove, int ply) {
   }
 }
 
-int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
-                   std::vector<Move> &pv, int ply) {
+int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move> &pv,
+                   int ply) {
   if (stopSearchFlag) {
     return INCOMPLETE_SEARCH;
   }
 
   if (time_controls_enabled) {
     auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - search_start_time)
-                            .count();
+    auto elapsed_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
+            .count();
     if (elapsed_time >= allocated_time) {
       stopSearchFlag = true;
       return INCOMPLETE_SEARCH;
@@ -108,8 +108,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing,
   int originalAlpha = alpha;
 
   // Look at this tommorrow
-  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply,
-                        entry_type)) {
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
     if (entry_type == TTEntryType::EXACT && ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
       board.makeMove(ttMove);
@@ -277,69 +276,6 @@ void Engine::orderQuiescMoves(Movelist &moves) {
   }
 }
 
-void Engine::calculateSearchTime() {
-  // Handle "go infinite" - when no time controls are given.
-  if (movetime <= 0 && wtime <= 0 && btime <= 0) {
-    // Set time limits to a very large value to simulate infinity.
-    // The search will continue until a "stop" command or max depth is reached.
-    const long long infinite_time = 1000LL * 60 * 60 * 24; // 24 hours in ms
-    soft_time_limit = infinite_time;
-    hard_time_limit = infinite_time;
-    allocated_time = infinite_time;
-    // The check inside minmax should be disabled for infinite search
-    // so it doesn't stop prematurely based on a previous game's time.
-    time_controls_enabled = false;
-    return;
-  }
-
-  // If we are here, time controls are active for this search.
-  time_controls_enabled = true;
-
-  // If movetime is fixed, all limits are the same.
-  if (movetime > 0) {
-    soft_time_limit = movetime;
-    hard_time_limit = movetime;
-    // Use allocated_time for the hard stop with a small buffer
-    allocated_time = movetime > 50 ? movetime - 50 : 0;
-    return;
-  }
-
-  int remaining_time;
-  int increment;
-  // Estimate 40 moves left in the game if not specified by UCI.
-  int moves_to_go = movestogo > 0 ? movestogo : 40;
-
-  if (board.sideToMove() == Color::WHITE) {
-    remaining_time = wtime;
-    increment = winc;
-  } else {
-    remaining_time = btime;
-    increment = binc;
-  }
-
-  // A safe portion of time to use for the move.
-  // We don't want to use more than 50% of our remaining time on a single move.
-  int safe_time = remaining_time * 0.5;
-
-  // Calculate the ideal time for this move.
-  int ideal_time = (remaining_time / moves_to_go) + (increment / 2);
-
-  // Our soft target is the ideal time.
-  soft_time_limit = ideal_time;
-
-  // The hard limit is much larger, giving us flexibility.
-  hard_time_limit = ideal_time * 2;
-
-  // But never let the hard limit exceed our safe time.
-  if (hard_time_limit > safe_time) {
-    hard_time_limit = safe_time;
-  }
-
-  // The allocated_time is the hard limit that the minmax function will use to
-  // force a stop. We leave a small buffer to ensure we don't lose on time.
-  allocated_time = hard_time_limit > 50 ? hard_time_limit - 50 : 0;
-}
-
 std::string Engine::getBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
@@ -365,8 +301,7 @@ std::string Engine::getBestMove() {
     int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
     std::vector<Move> currentBestLine;
 
-    bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing,
-                      currentBestLine, 0);
+    bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
 
     // Check if incomplete search
     if (bestEval == INCOMPLETE_SEARCH) {
@@ -390,9 +325,9 @@ std::string Engine::getBestMove() {
 
     // Elapsed Time and NPS
     auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - search_start_time)
-                            .count();
+    auto elapsed_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
+            .count();
 
     long long nps = 0;
 
@@ -402,8 +337,8 @@ std::string Engine::getBestMove() {
     }
 
     // UCI output
-    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched
-              << " time " << elapsed_time << " nps " << nps << " score ";
+    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
+              << elapsed_time << " nps " << nps << " score ";
 
     if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
       int movesToMate;

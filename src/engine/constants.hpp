@@ -21,3 +21,6 @@ constexpr int KNIGHT_VALUE = 300;
 constexpr int BISHOP_VALUE = 320;
 constexpr int ROOK_VALUE = 500;
 constexpr int QUEEN_VALUE = 900;
+
+// Time
+long long INFINITE_TIME = 1000LL * 60 * 60 * 24;
