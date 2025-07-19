@@ -4,9 +4,11 @@
 #include "heuristics.hpp"
 #include "utils.hpp"
 
-Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
-               Evaluation &evaluator)
-    : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator) {}
+Search::Search(Board &board, TimeManager &time_manager,
+               TranspositionTable &tt_helper, Evaluation &evaluator,
+               bool time_controls_enabled)
+    : board(board), time_manager(time_manager), tt_helper(tt_helper),
+      evaluator(evaluator), time_controls_enabled(time_controls_enabled) {}
 
 /* Order moves based on their priority */
 void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
