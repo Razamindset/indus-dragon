@@ -10,3 +10,10 @@ After repeated testing seems like there is some issue that needs to be solved be
 ## NPS, MATE Issue, Repeating.
 
 @tissatussa shared some games that point out that engine missed a mate and drew a game in winning position. This could be realted to PVS or TT. But we need to test it after recent changes before I can proceed.
+
+## Refactor and bug detection
+
+On 19 july 2025 I reafctored the entire codebase, separating the different parts into their own classes so in future it is easy to handle. But there is still a lot of work.
+
+It seems like there was malicious code in the write storeTT function that was causing severe issues when in end game and table is full so for now I am using simply a vector for this purpose lets see how it behaves. Honestly I didnot write that code my implementation was simple. I was testing gemini cli earlier with this project that might have put that code here.
+After 2 3 games looks like the bug is gone also note that for the current approach to work the size of tt must be a power of 2 for bitwise operations to work when storing and searching. I will write more about this when i feel this approach works for us.

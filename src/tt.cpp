@@ -1,22 +1,24 @@
 #include "tt.hpp"
 #include "constants.hpp"
 
+TranspositionTable::TranspositionTable() : transpositionTable(MAX_TT_ENTRIES) {}
+
 void TranspositionTable::printTTStats() const {
   std::cout << "Transposition Table Stats:\n";
   std::cout << "  TT Hits       : " << ttHits << "\n";
-  std::cout << "  TT Collisions : " << ttCollisions << "\n";
   std::cout << "  TT Stores     : " << ttStores << "\n";
-  std::cout << "  TT Size       : " << transpositionTable.size() << " / " << MAX_TT_ENTRIES << "\n";
+  std::cout << "  TT Size       : " << MAX_TT_ENTRIES << "\n";
 }
 
 bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
                                  chess::Move &bestMove, int ply, TTEntryType &entry_type) {
-  auto it = transpositionTable.find(hash);
-  if (it == transpositionTable.end() || it->second.hash != hash) {
+  const int index = hash & (MAX_TT_ENTRIES - 1);
+  const TTEntry &entry = transpositionTable[index];
+
+  if (entry.hash != hash) {
     return false;
   }
 
-  const TTEntry entry = it->second;
   ttHits++;
   bestMove = entry.bestMove;
   entry_type = entry.type;
@@ -51,29 +53,7 @@ void TranspositionTable::storeTT(uint64_t hash, int depth, int score, TTEntryTyp
     adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
   }
 
-  auto it = transpositionTable.find(hash);
-  if (it != transpositionTable.end()) {
-    if (depth >= it->second.depth) {
-      it->second = {hash, adjustedScore, depth, type, bestMove};
-      ttStores++;
-    } else {
-      ttCollisions++;
-    }
-  } else {
-    if (transpositionTable.size() < MAX_TT_ENTRIES) {
-      transpositionTable[hash] = {hash, adjustedScore, depth, type, bestMove};
-      ttStores++;
-    } else {
-      // Depth-based replacement
-      auto toErase = transpositionTable.begin();
-      for (auto it = transpositionTable.begin(); it != transpositionTable.end(); ++it) {
-        if (it->second.depth < toErase->second.depth) {
-          toErase = it;
-        }
-      }
-      transpositionTable.erase(toErase);
-      transpositionTable[hash] = {hash, adjustedScore, depth, type, bestMove};
-      ttStores++;
-    }
-  }
+  const int index = hash & (MAX_TT_ENTRIES - 1);
+  transpositionTable[index] = {hash, adjustedScore, depth, type, bestMove};
+  ttStores++;
 }
