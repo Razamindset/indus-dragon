@@ -2,9 +2,7 @@
 
 #include <atomic>
 #include <chrono>
-#include <climits>
 #include <string>
-#include <unordered_map>
 
 #include "chess.hpp"
 #include "constants.hpp"
@@ -44,12 +42,6 @@ private:
   std::chrono::steady_clock::time_point search_start_time;
   int allocated_time = 0;
 
-  // History Table
-  // 12 pieces 6 of each type and 64 squares.
-  int historyTable[12][64];
-  void clearHistoryTable();
-  void updateHistoryScore(chess::Piece piece, chess::Square to, int depth);
-
   int evaluate(int ply);
 
   // Search
@@ -60,8 +52,6 @@ private:
   // Move ordering and heuristics
   void orderMoves(Movelist &moves, Move ttMove, int ply);
   void orderQuiescMoves(Movelist &moves);
-  Move killerMoves[MAX_SEARCH_DEPTH][2];
-  void clearKiller();
 
 public:
   void setPosition(const std::string &fen);

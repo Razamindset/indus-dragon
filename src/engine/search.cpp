@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "heuristics.hpp"
 #include "utils.hpp"
 
 /* Order moves based on their priority */
@@ -337,27 +338,6 @@ void Engine::calculateSearchTime() {
   // The allocated_time is the hard limit that the minmax function will use to
   // force a stop. We leave a small buffer to ensure we don't lose on time.
   allocated_time = hard_time_limit > 50 ? hard_time_limit - 50 : 0;
-}
-
-void Engine::clearKiller() {
-  for (int i = 0; i < MAX_SEARCH_DEPTH; ++i) {
-    killerMoves[i][0] = Move::NULL_MOVE;
-    killerMoves[i][1] = Move::NULL_MOVE;
-  }
-}
-
-void Engine::clearHistoryTable() {
-  for (int i = 0; i < 12; ++i) {
-    for (int j = 0; j < 64; ++j) {
-      historyTable[i][j] = 0;
-    }
-  }
-}
-
-void Engine::updateHistoryScore(chess::Piece piece, chess::Square to,
-                                int depth) {
-  int pieceIndex = static_cast<int>(piece);
-  historyTable[pieceIndex][to.index()] += depth * depth;
 }
 
 std::string Engine::getBestMove() {
