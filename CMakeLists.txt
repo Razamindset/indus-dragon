@@ -17,6 +17,7 @@ set(SOURCES
     src/engine/evaluation.cpp
     src/engine/search.cpp
     src/engine/tt.cpp
+    src/engine/time_manager.cpp
 )
 
 # Define header files
@@ -25,6 +26,7 @@ set(HEADERS
     src/engine/evaluation.hpp
     src/engine/tt.hpp
     src/engine/heuristics.hpp
+    src/engine/time_manager.hpp
     src/engine/chess.hpp
 )
 

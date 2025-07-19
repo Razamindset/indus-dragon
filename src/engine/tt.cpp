@@ -6,13 +6,11 @@ void TranspositionTable::printTTStats() const {
   std::cout << "  TT Hits       : " << ttHits << "\n";
   std::cout << "  TT Collisions : " << ttCollisions << "\n";
   std::cout << "  TT Stores     : " << ttStores << "\n";
-  std::cout << "  TT Size       : " << transpositionTable.size() << " / "
-            << MAX_TT_ENTRIES << "\n";
+  std::cout << "  TT Size       : " << transpositionTable.size() << " / " << MAX_TT_ENTRIES << "\n";
 }
 
-bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score,
-                                 int alpha, int beta, chess::Move &bestMove,
-                                 int ply, TTEntryType &entry_type) {
+bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
+                                 chess::Move &bestMove, int ply, TTEntryType &entry_type) {
   auto it = transpositionTable.find(hash);
   if (it == transpositionTable.end() || it->second.hash != hash) {
     return false;
@@ -46,9 +44,8 @@ bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score,
   return false;
 }
 
-void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
-                                 TTEntryType type, chess::Move bestMove,
-                                 int ply) {
+void TranspositionTable::storeTT(uint64_t hash, int depth, int score, TTEntryType type,
+                                 chess::Move bestMove, int ply) {
   int adjustedScore = score;
   if (std::abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
     adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
@@ -69,8 +66,7 @@ void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
     } else {
       // Depth-based replacement
       auto toErase = transpositionTable.begin();
-      for (auto it = transpositionTable.begin(); it != transpositionTable.end();
-           ++it) {
+      for (auto it = transpositionTable.begin(); it != transpositionTable.end(); ++it) {
         if (it->second.depth < toErase->second.depth) {
           toErase = it;
         }

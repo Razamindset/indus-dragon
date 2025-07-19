@@ -84,7 +84,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
     auto elapsed_time =
         std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
             .count();
-    if (elapsed_time >= allocated_time) {
+    if (elapsed_time >= hard_time_limit) {
       stopSearchFlag = true;
       return INCOMPLETE_SEARCH;
     }
@@ -283,7 +283,15 @@ std::string Engine::getBestMove() {
   }
   int maxDepth = MAX_SEARCH_DEPTH;
 
-  calculateSearchTime();
+  if (time_controls_enabled) {
+    CalculatedTime times = time_manager.calculateSearchTime(board);
+    soft_time_limit = times.soft_time;
+    hard_time_limit = times.hard_time;
+  } else {
+    soft_time_limit = 1000000000LL;
+    hard_time_limit = 1000000000LL;
+  }
+
   search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;

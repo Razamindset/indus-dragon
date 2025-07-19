@@ -7,6 +7,7 @@
 #include "chess.hpp"
 #include "constants.hpp"
 #include "evaluation.hpp"
+#include "time_manager.hpp"
 #include "tt.hpp"
 
 using namespace chess;
@@ -19,15 +20,19 @@ private:
 
   TranspositionTable tt_helper;
 
+  TimeManager time_manager;
+
   std::atomic<bool> stopSearchFlag{false};
   int getPieceValue(Piece piece);
   long long positionsSearched = 0;
 
+  // Time management
+  bool time_controls_enabled = false;
+  long long soft_time_limit = 0;
+  long long hard_time_limit = 0;
   int best_move_changes = 0;
   Move last_iteration_best_move = Move::NULL_MOVE;
-
   std::chrono::steady_clock::time_point search_start_time;
-  int allocated_time = 0;
 
   int evaluate(int ply);
 

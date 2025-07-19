@@ -5,10 +5,10 @@
 
 class TranspositionTable {
 public:
-  void storeTT(uint64_t hash, int depth, int score, TTEntryType type,
-               chess::Move bestMove, int ply);
-  bool probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
-               chess::Move &bestMove, int ply, TTEntryType &entry_type);
+  void storeTT(uint64_t hash, int depth, int score, TTEntryType type, chess::Move bestMove,
+               int ply);
+  bool probeTT(uint64_t hash, int depth, int &score, int alpha, int beta, chess::Move &bestMove,
+               int ply, TTEntryType &entry_type);
   // Table Stats
   void printTTStats() const;
 

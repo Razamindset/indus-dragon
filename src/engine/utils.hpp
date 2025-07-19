@@ -21,17 +21,3 @@ struct CalculatedTime {
   long long soft_time;
   long long hard_time;
 };
-
-// Count the total pieces on the board
-int count_pieces(const chess::Board &board) {
-  return board.pieces(chess::PieceType::PAWN, chess::Color::WHITE).count() +
-         board.pieces(chess::PieceType::PAWN, chess::Color::BLACK).count() +
-         board.pieces(chess::PieceType::KNIGHT, chess::Color::WHITE).count() +
-         board.pieces(chess::PieceType::KNIGHT, chess::Color::BLACK).count() +
-         board.pieces(chess::PieceType::BISHOP, chess::Color::WHITE).count() +
-         board.pieces(chess::PieceType::BISHOP, chess::Color::BLACK).count() +
-         board.pieces(chess::PieceType::ROOK, chess::Color::WHITE).count() +
-         board.pieces(chess::PieceType::ROOK, chess::Color::BLACK).count() +
-         board.pieces(chess::PieceType::QUEEN, chess::Color::WHITE).count() +
-         board.pieces(chess::PieceType::QUEEN, chess::Color::BLACK).count();
-}
