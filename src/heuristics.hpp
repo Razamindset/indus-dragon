@@ -24,6 +24,6 @@ void clearHistoryTable() {
 }
 
 void updateHistoryScore(chess::Piece piece, chess::Square to, int depth) {
-  int pieceIndex = static_cast<int>(piece);
+  int pieceIndex = static_cast<int>(piece.type());
   historyTable[pieceIndex][to.index()] += depth * depth;
 }

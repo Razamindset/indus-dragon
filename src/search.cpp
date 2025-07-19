@@ -1,9 +1,15 @@
-#include "engine.hpp"
+#include "search.hpp"
+#include "constants.hpp"
+#include "evaluation.hpp"
 #include "heuristics.hpp"
 #include "utils.hpp"
 
+Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
+               Evaluation &evaluator)
+    : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator) {}
+
 /* Order moves based on their priority */
-void Engine::orderMoves(Movelist &moves, Move ttMove, int ply) {
+void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
 
@@ -73,7 +79,7 @@ void Engine::orderMoves(Movelist &moves, Move ttMove, int ply) {
   }
 }
 
-int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move> &pv,
+int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move> &pv,
                    int ply) {
   if (stopSearchFlag) {
     return INCOMPLETE_SEARCH;
@@ -185,7 +191,7 @@ int Engine::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 }
 
 /* Reach a stable quiet pos before evaluating */
-int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
+int Search::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
   if (stopSearchFlag) {
     return INCOMPLETE_SEARCH;
   }
@@ -234,7 +240,7 @@ int Engine::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
   return isMaximizing ? alpha : beta;
 }
 
-void Engine::orderQuiescMoves(Movelist &moves) {
+void Search::orderQuiescMoves(Movelist &moves) {
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
 
@@ -276,7 +282,7 @@ void Engine::orderQuiescMoves(Movelist &moves) {
   }
 }
 
-std::string Engine::getBestMove() {
+std::string Search::searchBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
     return "";
@@ -403,4 +409,45 @@ std::string Engine::getBestMove() {
   }
 
   return uci::moveToUci(bestMove);
+}
+
+int Search::getPieceValue(Piece piece) {
+  switch (piece) {
+  case PieceGenType::PAWN:
+    return 100;
+  case PieceGenType::KNIGHT:
+    return 300;
+  case PieceGenType::BISHOP:
+    return 320;
+  case PieceGenType::ROOK:
+    return 500;
+  case PieceGenType::QUEEN:
+    return 900;
+  default:
+    return 0; // King has no material value
+  }
+}
+
+int Search::evaluate(int ply) {
+  if (isGameOver(board)) {
+    if (getGameOverReason(board) == GameResultReason::CHECKMATE) {
+      if (board.sideToMove() == Color::WHITE) {
+        return -MATE_SCORE + ply;
+      } else {
+        return MATE_SCORE - ply;
+      }
+    }
+    return DRAW_SCORE;
+  }
+  return evaluator.evaluate(board);
+}
+
+bool Search::isGameOver(const chess::Board &board) {
+  auto result = board.isGameOver();
+  return result.second != chess::GameResult::NONE;
+}
+
+GameResultReason Search::getGameOverReason(const chess::Board &board) {
+  auto result = board.isGameOver();
+  return result.first;
 }

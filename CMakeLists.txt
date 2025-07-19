@@ -13,21 +13,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Define source files
 set(SOURCES
     src/main.cpp
-    src/engine/engine.cpp
-    src/engine/evaluation.cpp
-    src/engine/search.cpp
-    src/engine/tt.cpp
-    src/engine/time_manager.cpp
+    src/uci.cpp
+    src/engine.cpp
+    src/evaluation.cpp
+    src/search.cpp
+    src/tt.cpp
+    src/time_manager.cpp
 )
 
 # Define header files
 set(HEADERS
-    src/engine/engine.hpp
-    src/engine/evaluation.hpp
-    src/engine/tt.hpp
-    src/engine/heuristics.hpp
-    src/engine/time_manager.hpp
-    src/engine/chess.hpp
+    src/uci.hpp
+    src/engine.hpp
+    src/evaluation.hpp
+    src/search.hpp
+    src/tt.hpp
+    src/heuristics.hpp
+    src/time_manager.hpp
+    src/chess.hpp
 )
 
 # Create executable
