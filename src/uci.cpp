@@ -77,6 +77,7 @@ void UCIAdapter::processCommand(const std::string &cmd) {
   } else if (token == "isready") {
     std::string readyOk = "readyok";
     std::cout << readyOk << std::endl;
+    fflush(stdout);
     logOutput(readyOk);
   } else if (token == "position") {
     handlePosition(iss);
@@ -119,6 +120,7 @@ void UCIAdapter::handleUCI() {
   // std::endl;
 
   std::cout << uciOk << std::endl;
+  fflush(stdout);
   logOutput(uciOk);
 }
 
@@ -246,6 +248,7 @@ void UCIAdapter::handleGo(std::istringstream &iss) {
       if (!stopRequested.load()) {
         std::string bestMoveMsg = "bestmove " + bestMove;
         std::cout << bestMoveMsg << std::endl;
+        fflush(stdout);
         logOutput(bestMoveMsg);
         logCommand("Best move found: " + bestMove);
       } else {
