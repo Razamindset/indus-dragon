@@ -9,246 +9,6 @@ Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_h
     : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator),
       time_controls_enabled(time_controls_enabled) {}
 
-/* Order moves based on their priority */
-void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
-  std::vector<std::pair<Move, int>> scoredMoves;
-  scoredMoves.reserve(moves.size());
-
-  // Get the killer moves
-  Move killer1 = killerMoves[ply][0];
-  Move killer2 = killerMoves[ply][1];
-
-  // Loop through each move and assign it a score
-  for (Move move : moves) {
-    int score = 0;
-
-    // Priorotize ttMove and break after putthing on top
-    if (ttMove != Move::NULL_MOVE && move == ttMove) {
-      scoredMoves.emplace_back(move, 10000);
-      continue;
-    }
-
-    // KIller moves score
-    if (move == killer1) {
-      score = 9000; // High score for primary killer
-    } else if (move == killer2) {
-      score = 8500; // Slightly lower score for secondary killer
-    }
-
-    // Todo: see how we can order checks
-
-    // Prioritize captures using MVV-LVA
-    if (board.isCapture(move)) {
-      Piece attacker = board.at(move.from());
-      Piece victim = board.at(move.to());
-      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
-    }
-
-    // Prioritize promotions
-    if (move.promotionType() == QUEEN)
-      score += 900;
-    if (move.promotionType() == ROOK)
-      score += 500;
-    if (move.promotionType() == BISHOP)
-      score += 320;
-    if (move.promotionType() == KNIGHT)
-      score += 300;
-
-    // Give a slight edge castling
-    if (move.typeOf() == Move::CASTLING) {
-      score += 300;
-    }
-
-    // Add the move to the list along with its score
-    scoredMoves.emplace_back(move, score);
-  }
-
-  // Sort the moves based on scores
-  std::sort(scoredMoves.begin(), scoredMoves.end(),
-            [](const auto &a, const auto &b) { return a.second > b.second; });
-
-  // Replace original move list with sorted moves
-  moves.clear();
-  for (const auto &[move, score] : scoredMoves) {
-    moves.add(move);
-  }
-}
-
-int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
-  if (stopSearchFlag) {
-    return beta;
-  }
-
-  if (time_controls_enabled) {
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
-            .count();
-    if (elapsed_time >= hard_time_limit) {
-      stopSearchFlag = true;
-      return beta;
-    }
-  }
-
-  pv.clear();
-  if (ply > 0 && (board.isRepetition() || board.isHalfMoveDraw())) {
-    return 0;
-  }
-
-  positionsSearched++;
-
-  if (isGameOver(board)) {
-    return evaluate(ply);
-  }
-
-  if (depth == 0) {
-    return quiescenceSearch(alpha, beta, ply);
-  }
-
-  uint64_t boardhash = board.hash();
-  int ttScore = 0;
-  Move ttMove = Move::NULL_MOVE;
-  TTEntryType entry_type;
-  int originalAlpha = alpha;
-
-  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
-    if (ttMove != Move::NULL_MOVE) {
-      pv.push_back(ttMove);
-      board.makeMove(ttMove);
-      std::vector<Move> childPv;
-      negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
-      board.unmakeMove(ttMove);
-      pv.insert(pv.end(), childPv.begin(), childPv.end());
-    }
-    return ttScore;
-  }
-
-  Movelist moves;
-  movegen::legalmoves(moves, board);
-  orderMoves(moves, ttMove, ply);
-
-  Move bestMove = Move::NULL_MOVE;
-  int bestScore = -MATE_SCORE;
-
-  for (int i = 0; i < moves.size(); ++i) {
-    Move move = moves[i];
-    board.makeMove(move);
-
-    std::vector<Move> childPv;
-    int eval = -negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
-    board.unmakeMove(move);
-
-    if (eval > bestScore) {
-      bestScore = eval;
-      bestMove = move;
-      pv = {move};
-      pv.insert(pv.end(), childPv.begin(), childPv.end());
-    }
-    alpha = std::max(bestScore, alpha);
-
-    if (alpha >= beta) {
-      if (!board.isCapture(move)) {
-        killerMoves[ply][1] = killerMoves[ply][0];
-        killerMoves[ply][0] = move;
-      }
-      break;
-    }
-  }
-
-  TTEntryType entryType;
-  if (bestScore <= originalAlpha) {
-    entryType = TTEntryType::UPPER;
-  } else if (bestScore >= beta) {
-    entryType = TTEntryType::LOWER;
-  } else {
-    entryType = TTEntryType::EXACT;
-  }
-
-  if (bestMove != Move::NULL_MOVE) {
-    tt_helper.storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
-  }
-
-  return bestScore;
-}
-
-/* Reach a stable quiet pos before evaluating */
-int Search::quiescenceSearch(int alpha, int beta, int ply) {
-  if (stopSearchFlag) {
-    return beta;
-  }
-  positionsSearched++;
-
-  if (isGameOver(board)) {
-    return evaluate(ply);
-  }
-
-  int standPat = evaluate(ply);
-
-  if (standPat >= beta) {
-    return beta;
-  }
-  alpha = std::max(alpha, standPat);
-
-  Movelist moves;
-  movegen::legalmoves(moves, board);
-  orderQuiescMoves(moves);
-
-  for (Move move : moves) {
-    board.makeMove(move);
-    int score = -quiescenceSearch(-beta, -alpha, ply + 1);
-    board.unmakeMove(move);
-
-    alpha = std::max(alpha, score);
-    if (alpha >= beta) {
-      break;
-    }
-  }
-
-  return alpha;
-}
-
-void Search::orderQuiescMoves(Movelist &moves) {
-  std::vector<std::pair<Move, int>> scoredMoves;
-  scoredMoves.reserve(moves.size());
-
-  for (Move move : moves) {
-    int score = 0;
-    bool isInteresting = false;
-
-    if (board.isCapture(move)) {
-      isInteresting = true;
-      Piece attacker = board.at(move.from());
-      Piece victim = board.at(move.to());
-      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
-    }
-
-    if (move.typeOf() == Move::PROMOTION) {
-      isInteresting = true;
-      if (move.promotionType() == QUEEN) {
-        score += 900;
-      } else if (move.promotionType() == ROOK) {
-        score += 500;
-      } else if (move.promotionType() == BISHOP) {
-        score += 320;
-      } else if (move.promotionType() == KNIGHT) {
-        score += 300;
-      }
-    }
-
-    if (isInteresting) {
-      scoredMoves.emplace_back(move, score);
-    }
-  }
-
-  std::sort(scoredMoves.begin(), scoredMoves.end(),
-            [](const auto &a, const auto &b) { return a.second > b.second; });
-
-  moves.clear();
-  for (const auto &[move, score] : scoredMoves) {
-    moves.add(move);
-  }
-}
-
 std::string Search::searchBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
@@ -360,6 +120,248 @@ std::string Search::searchBestMove() {
   }
 
   return uci::moveToUci(bestMove);
+}
+
+int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
+  if (stopSearchFlag) {
+    return beta;
+  }
+
+  if (time_controls_enabled) {
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
+            .count();
+    if (elapsed_time >= hard_time_limit) {
+      stopSearchFlag = true;
+      return beta;
+    }
+  }
+
+  pv.clear();
+  if (ply > 0)
+    if ((board.isRepetition(1)) ||
+        (board.isHalfMoveDraw() && board.getHalfMoveDrawType().second == GameResult::DRAW)) {
+      return 0;
+    }
+
+  positionsSearched++;
+
+  if (isGameOver(board)) {
+    return evaluate(ply);
+  }
+
+  if (depth == 0) {
+    return quiescenceSearch(alpha, beta, ply);
+  }
+
+  uint64_t boardhash = board.hash();
+  int ttScore = 0;
+  Move ttMove = Move::NULL_MOVE;
+  TTEntryType entry_type;
+  int originalAlpha = alpha;
+
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
+    if (ttMove != Move::NULL_MOVE) {
+      pv.push_back(ttMove);
+      board.makeMove(ttMove);
+      std::vector<Move> childPv;
+      negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
+      board.unmakeMove(ttMove);
+      pv.insert(pv.end(), childPv.begin(), childPv.end());
+    }
+    return ttScore;
+  }
+
+  Movelist moves;
+  movegen::legalmoves(moves, board);
+  orderMoves(moves, ttMove, ply);
+
+  Move bestMove = Move::NULL_MOVE;
+  int bestScore = -MATE_SCORE;
+
+  for (int i = 0; i < moves.size(); ++i) {
+    Move move = moves[i];
+    board.makeMove(move);
+
+    std::vector<Move> childPv;
+    int eval = -negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
+    board.unmakeMove(move);
+
+    if (eval > bestScore) {
+      bestScore = eval;
+      bestMove = move;
+      pv = {move};
+      pv.insert(pv.end(), childPv.begin(), childPv.end());
+    }
+    alpha = std::max(bestScore, alpha);
+
+    if (alpha >= beta) {
+      if (!board.isCapture(move)) {
+        killerMoves[ply][1] = killerMoves[ply][0];
+        killerMoves[ply][0] = move;
+      }
+      break;
+    }
+  }
+
+  TTEntryType entryType;
+  if (bestScore <= originalAlpha) {
+    entryType = TTEntryType::UPPER;
+  } else if (bestScore >= beta) {
+    entryType = TTEntryType::LOWER;
+  } else {
+    entryType = TTEntryType::EXACT;
+  }
+
+  if (bestMove != Move::NULL_MOVE) {
+    tt_helper.storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
+  }
+
+  return bestScore;
+}
+
+/* Order moves based on their priority */
+void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
+  std::vector<std::pair<Move, int>> scoredMoves;
+  scoredMoves.reserve(moves.size());
+
+  // Get the killer moves
+  Move killer1 = killerMoves[ply][0];
+  Move killer2 = killerMoves[ply][1];
+
+  // Loop through each move and assign it a score
+  for (Move move : moves) {
+    int score = 0;
+
+    // Priorotize ttMove and break after putthing on top
+    if (ttMove != Move::NULL_MOVE && move == ttMove) {
+      scoredMoves.emplace_back(move, 10000);
+      continue;
+    }
+
+    // KIller moves score
+    if (move == killer1) {
+      score = 9000; // High score for primary killer
+    } else if (move == killer2) {
+      score = 8500; // Slightly lower score for secondary killer
+    }
+
+    // Todo: see how we can order checks
+
+    // Prioritize captures using MVV-LVA
+    if (board.isCapture(move)) {
+      Piece attacker = board.at(move.from());
+      Piece victim = board.at(move.to());
+      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
+    }
+
+    // Prioritize promotions
+    if (move.promotionType() == QUEEN)
+      score += 900;
+    if (move.promotionType() == ROOK)
+      score += 500;
+    if (move.promotionType() == BISHOP)
+      score += 320;
+    if (move.promotionType() == KNIGHT)
+      score += 300;
+
+    // Give a slight edge castling
+    if (move.typeOf() == Move::CASTLING) {
+      score += 300;
+    }
+
+    // Add the move to the list along with its score
+    scoredMoves.emplace_back(move, score);
+  }
+
+  // Sort the moves based on scores
+  std::sort(scoredMoves.begin(), scoredMoves.end(),
+            [](const auto &a, const auto &b) { return a.second > b.second; });
+
+  // Replace original move list with sorted moves
+  moves.clear();
+  for (const auto &[move, score] : scoredMoves) {
+    moves.add(move);
+  }
+}
+
+/* Reach a stable quiet pos before evaluating */
+int Search::quiescenceSearch(int alpha, int beta, int ply) {
+  if (stopSearchFlag) {
+    return beta;
+  }
+  positionsSearched++;
+
+  if (isGameOver(board)) {
+    return evaluate(ply);
+  }
+
+  int standPat = evaluate(ply);
+
+  if (standPat >= beta) {
+    return beta;
+  }
+  alpha = std::max(alpha, standPat);
+
+  Movelist moves;
+  movegen::legalmoves(moves, board);
+  orderQuiescMoves(moves);
+
+  for (Move move : moves) {
+    board.makeMove(move);
+    int score = -quiescenceSearch(-beta, -alpha, ply + 1);
+    board.unmakeMove(move);
+
+    alpha = std::max(alpha, score);
+    if (alpha >= beta) {
+      break;
+    }
+  }
+
+  return alpha;
+}
+
+void Search::orderQuiescMoves(Movelist &moves) {
+  std::vector<std::pair<Move, int>> scoredMoves;
+  scoredMoves.reserve(moves.size());
+
+  for (Move move : moves) {
+    int score = 0;
+    bool isInteresting = false;
+
+    if (board.isCapture(move)) {
+      isInteresting = true;
+      Piece attacker = board.at(move.from());
+      Piece victim = board.at(move.to());
+      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
+    }
+
+    if (move.typeOf() == Move::PROMOTION) {
+      isInteresting = true;
+      if (move.promotionType() == QUEEN) {
+        score += 900;
+      } else if (move.promotionType() == ROOK) {
+        score += 500;
+      } else if (move.promotionType() == BISHOP) {
+        score += 320;
+      } else if (move.promotionType() == KNIGHT) {
+        score += 300;
+      }
+    }
+
+    if (isInteresting) {
+      scoredMoves.emplace_back(move, score);
+    }
+  }
+
+  std::sort(scoredMoves.begin(), scoredMoves.end(),
+            [](const auto &a, const auto &b) { return a.second > b.second; });
+
+  moves.clear();
+  for (const auto &[move, score] : scoredMoves) {
+    moves.add(move);
+  }
 }
 
 int Search::getPieceValue(Piece piece) {
