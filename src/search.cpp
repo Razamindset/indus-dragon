@@ -4,11 +4,10 @@
 #include "heuristics.hpp"
 #include "utils.hpp"
 
-Search::Search(Board &board, TimeManager &time_manager,
-               TranspositionTable &tt_helper, Evaluation &evaluator,
-               bool time_controls_enabled)
-    : board(board), time_manager(time_manager), tt_helper(tt_helper),
-      evaluator(evaluator), time_controls_enabled(time_controls_enabled) {}
+Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
+               Evaluation &evaluator, bool time_controls_enabled)
+    : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator),
+      time_controls_enabled(time_controls_enabled) {}
 
 /* Order moves based on their priority */
 void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
@@ -36,18 +35,13 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       score = 8500; // Slightly lower score for secondary killer
     }
 
-    // Todo Find a good way to check for checks because can't use board.makemove() and
+    // Todo: see how we can order checks
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
       score += 100 * getPieceValue(victim) - getPieceValue(attacker);
-    } else {
-      Piece movingPiece = board.at(move.from());
-      int pieceIndex = static_cast<int>(movingPiece);
-      int squareIndex = move.to().index();
-      score += historyTable[pieceIndex][squareIndex];
     }
 
     // Prioritize promotions
@@ -80,10 +74,9 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
   }
 }
 
-int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vector<Move> &pv,
-                   int ply) {
+int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
   if (stopSearchFlag) {
-    return isMaximizing ? beta : alpha;
+    return beta;
   }
 
   if (time_controls_enabled) {
@@ -93,19 +86,23 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
             .count();
     if (elapsed_time >= hard_time_limit) {
       stopSearchFlag = true;
-      return isMaximizing ? beta : alpha;
+      return beta;
     }
   }
 
-  positionsSearched++;
   pv.clear();
+  if (ply > 0 && (board.isRepetition() || board.isHalfMoveDraw())) {
+    return 0;
+  }
+
+  positionsSearched++;
 
   if (isGameOver(board)) {
     return evaluate(ply);
   }
 
   if (depth == 0) {
-    return quiescenceSearch(alpha, beta, isMaximizing, ply);
+    return quiescenceSearch(alpha, beta, ply);
   }
 
   uint64_t boardhash = board.hash();
@@ -114,13 +111,12 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   TTEntryType entry_type;
   int originalAlpha = alpha;
 
-  // Look at this tommorrow
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
-    if (entry_type == TTEntryType::EXACT && ttMove != Move::NULL_MOVE) {
+    if (ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
       board.makeMove(ttMove);
       std::vector<Move> childPv;
-      minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+      negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
       board.unmakeMove(ttMove);
       pv.insert(pv.end(), childPv.begin(), childPv.end());
     }
@@ -132,40 +128,28 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
   orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
-  int bestScore = isMaximizing ? -MATE_SCORE : MATE_SCORE;
+  int bestScore = -MATE_SCORE;
 
   for (int i = 0; i < moves.size(); ++i) {
     Move move = moves[i];
     board.makeMove(move);
 
     std::vector<Move> childPv;
-    int eval = minmax(depth - 1, alpha, beta, !isMaximizing, childPv, ply + 1);
+    int eval = -negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
     board.unmakeMove(move);
 
-    if (isMaximizing) {
-      if (eval > bestScore) {
-        bestScore = eval;
-        bestMove = move;
-        pv = {move};
-        pv.insert(pv.end(), childPv.begin(), childPv.end());
-      }
-      alpha = std::max(bestScore, alpha);
-    } else {
-      if (eval < bestScore) {
-        bestScore = eval;
-        bestMove = move;
-        pv = {move};
-        pv.insert(pv.end(), childPv.begin(), childPv.end());
-      }
-      beta = std::min(bestScore, beta);
+    if (eval > bestScore) {
+      bestScore = eval;
+      bestMove = move;
+      pv = {move};
+      pv.insert(pv.end(), childPv.begin(), childPv.end());
     }
+    alpha = std::max(bestScore, alpha);
 
     if (alpha >= beta) {
       if (!board.isCapture(move)) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
-        Piece movingPiece = board.at(move.from());
-        updateHistoryScore(movingPiece, move.to(), depth);
       }
       break;
     }
@@ -188,9 +172,9 @@ int Search::minmax(int depth, int alpha, int beta, bool isMaximizing, std::vecto
 }
 
 /* Reach a stable quiet pos before evaluating */
-int Search::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
+int Search::quiescenceSearch(int alpha, int beta, int ply) {
   if (stopSearchFlag) {
-    return isMaximizing ? beta : alpha;
+    return beta;
   }
   positionsSearched++;
 
@@ -200,17 +184,10 @@ int Search::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
 
   int standPat = evaluate(ply);
 
-  if (isMaximizing) {
-    if (standPat >= beta) {
-      return beta;
-    }
-    alpha = std::max(alpha, standPat);
-  } else {
-    if (standPat <= alpha) {
-      return alpha;
-    }
-    beta = std::min(beta, standPat);
+  if (standPat >= beta) {
+    return beta;
   }
+  alpha = std::max(alpha, standPat);
 
   Movelist moves;
   movegen::legalmoves(moves, board);
@@ -218,23 +195,16 @@ int Search::quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply) {
 
   for (Move move : moves) {
     board.makeMove(move);
-    int score = quiescenceSearch(alpha, beta, !isMaximizing, ply + 1);
+    int score = -quiescenceSearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
 
-    if (isMaximizing) {
-      alpha = std::max(alpha, score);
-      if (alpha >= beta) {
-        break;
-      }
-    } else {
-      beta = std::min(beta, score);
-      if (alpha >= beta) {
-        break;
-      }
+    alpha = std::max(alpha, score);
+    if (alpha >= beta) {
+      break;
     }
   }
 
-  return isMaximizing ? alpha : beta;
+  return alpha;
 }
 
 void Search::orderQuiescMoves(Movelist &moves) {
@@ -301,18 +271,15 @@ std::string Search::searchBestMove() {
   best_move_changes = 0;
   last_iteration_best_move = Move::NULL_MOVE;
   clearKiller();
-  clearHistoryTable();
 
-  bool isMaximizing = (board.sideToMove() == Color::WHITE);
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
-    int bestEval = isMaximizing ? -MATE_SCORE : MATE_SCORE;
     std::vector<Move> currentBestLine;
 
-    bestEval = minmax(currentDepth, -MATE_SCORE, MATE_SCORE, isMaximizing, currentBestLine, 0);
+    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag && currentDepth > 1) {
@@ -355,16 +322,8 @@ std::string Search::searchBestMove() {
       }
       int fullMovesToMate = (movesToMate + 1) / 2;
 
-      // Perspective based mate and eval scores
-      if ((board.sideToMove() == Color::BLACK && bestEval > 0) ||
-          (board.sideToMove() == Color::WHITE && bestEval < 0)) {
-        fullMovesToMate = -fullMovesToMate;
-      }
       std::cout << "mate " << fullMovesToMate << " pv ";
     } else {
-      if (board.sideToMove() == Color::BLACK) {
-        bestEval = -bestEval;
-      }
       std::cout << "cp " << bestEval << " pv ";
     }
 
@@ -423,15 +382,12 @@ int Search::getPieceValue(Piece piece) {
 int Search::evaluate(int ply) {
   if (isGameOver(board)) {
     if (getGameOverReason(board) == GameResultReason::CHECKMATE) {
-      if (board.sideToMove() == Color::WHITE) {
-        return -MATE_SCORE + ply;
-      } else {
-        return MATE_SCORE - ply;
-      }
+      return -MATE_SCORE + ply;
     }
     return DRAW_SCORE;
   }
-  return evaluator.evaluate(board);
+  int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
+  return evaluator.evaluate(board) * perspective;
 }
 
 bool Search::isGameOver(const chess::Board &board) {

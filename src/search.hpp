@@ -35,9 +35,8 @@ private:
   Move last_iteration_best_move = Move::NULL_MOVE;
   std::chrono::steady_clock::time_point search_start_time;
 
-  int minmax(int depth, int alpha, int beta, bool isMaximizing,
-             std::vector<Move> &pv, int ply);
-  int quiescenceSearch(int alpha, int beta, bool isMaximizing, int ply);
+  int negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply);
+  int quiescenceSearch(int alpha, int beta, int ply);
   void orderMoves(Movelist &moves, Move tt_move, int ply);
   void orderQuiescMoves(Movelist &moves);
   int evaluate(int ply);
