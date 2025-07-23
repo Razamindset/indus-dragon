@@ -9,6 +9,30 @@ Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_h
     : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator),
       time_controls_enabled(time_controls_enabled) {}
 
+void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int currentDepth,
+                           long long nps, auto elapsed_time) {
+  std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
+            << elapsed_time << " nps " << nps << " score ";
+
+  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
+    int movesToMate;
+    if (bestEval > 0) { // White is mating
+      movesToMate = MATE_SCORE - bestEval;
+    } else {
+      movesToMate = MATE_SCORE + bestEval;
+    }
+    int fullMovesToMate = (movesToMate + 1) / 2;
+    std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
+  } else {
+    std::cout << "cp " << bestEval << " pv ";
+  }
+
+  for (const auto &move : bestLine) {
+    std::cout << move << " ";
+  }
+  std::cout << std::endl;
+}
+
 std::string Search::searchBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
@@ -70,39 +94,21 @@ std::string Search::searchBestMove() {
     }
 
     // UCI output
-    std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
-              << elapsed_time << " nps " << nps << " score ";
-
-    if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
-      int movesToMate;
-      if (bestEval > 0) { // White is mating
-        movesToMate = MATE_SCORE - bestEval;
-      } else {
-        movesToMate = MATE_SCORE + bestEval;
-      }
-      int fullMovesToMate = (movesToMate + 1) / 2;
-      std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
-    } else {
-      std::cout << "cp " << bestEval << " pv ";
-    }
-
-    for (const auto &move : bestLine) {
-      std::cout << move << " ";
-    }
-    std::cout << std::endl;
+    printInfoLine(bestEval, bestLine, currentDepth, nps, elapsed_time);
 
     // Check if we should stop.
-    if (elapsed_time >= soft_time_limit) {
-      // If the best move has been unstable, give it a bit more time,
-      // but only if we are not close to our hard limit.
-      if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
-        // Extend time by a small, fixed amount (e.g., 30% of the original soft
-        // limit)
+    bool reached_soft_limit = elapsed_time >= soft_time_limit;
+
+    if (reached_soft_limit) {
+
+      bool should_increase_time = best_move_changes >= 2 && elapsed_time < hard_time_limit / 3;
+
+      if (should_increase_time) {
+
         soft_time_limit += soft_time_limit * 0.3;
-        best_move_changes = 0; // Reset counter for the next potential extension
+        best_move_changes = 0;
+
       } else {
-        // Otherwise, the search is stable enough or we are out of time, so
-        // stop.
         break;
       }
     }

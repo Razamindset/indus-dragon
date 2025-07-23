@@ -43,4 +43,7 @@ private:
   bool isGameOver(const chess::Board &board);
   GameResultReason getGameOverReason(const chess::Board &board);
   int getPieceValue(Piece piece);
+  void printInfoLine(int eval, std::vector<Move> pv, int currentDepth, long long nps,
+                     auto elapsed_time);
+  void handleTime();
 };
