@@ -239,6 +239,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
   Move killer2 = killerMoves[ply][1];
 
   // Loop through each move and assign it a score
+  // TTmove, Captues, Promotions, Killer MOves, Castling, History heuristics
   for (Move move : moves) {
     int score = 0;
 
@@ -248,20 +249,11 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       continue;
     }
 
-    // Killer moves score
-    if (!board.isCapture(move)) {
-      if (move == killer1) {
-        score = 9000; // High score for primary killer
-      } else if (move == killer2) {
-        score = 8500; // Slightly lower score for secondary killer
-      }
-    }
-
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
-      score += 10000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
+      score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
 
     // Prioritize checks - FIX: Only if not a capture (to avoid double bonus)
@@ -282,6 +274,15 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       score += 320;
     else if (move.promotionType() == KNIGHT)
       score += 300;
+
+    // Killer moves score
+    if (!board.isCapture(move)) {
+      if (move == killer1) {
+        score = 500; // High score for primary killer
+      } else if (move == killer2) {
+        score = 400; // Slightly lower score for secondary killer
+      }
+    }
 
     // Give a slight edge to castling
     if (move.typeOf() == Move::CASTLING) {
