@@ -22,7 +22,7 @@ public:
 
   void makeMove(std::string move);
 
-  std::string getBestMove();
+  void getBestMove();
 
   void stopSearch();
 

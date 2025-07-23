@@ -26,6 +26,6 @@ void Engine::makeMove(std::string move) {
   board.makeMove(parsedMove);
 }
 
-std::string Engine::getBestMove() { return search.searchBestMove(); }
+void Engine::getBestMove() { search.searchBestMove(); }
 
 void Engine::stopSearch() { search.stopSearch(); }

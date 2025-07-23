@@ -9,34 +9,10 @@ Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_h
     : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator),
       time_controls_enabled(time_controls_enabled) {}
 
-void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int currentDepth,
-                           long long nps, auto elapsed_time) {
-  std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
-            << elapsed_time << " nps " << nps << " score ";
-
-  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
-    int movesToMate;
-    if (bestEval > 0) { // White is mating
-      movesToMate = MATE_SCORE - bestEval;
-    } else {
-      movesToMate = MATE_SCORE + bestEval;
-    }
-    int fullMovesToMate = (movesToMate + 1) / 2;
-    std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
-  } else {
-    std::cout << "cp " << bestEval << " pv ";
-  }
-
-  for (const auto &move : bestLine) {
-    std::cout << move << " ";
-  }
-  std::cout << std::endl;
-}
-
-std::string Search::searchBestMove() {
+void Search::searchBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
-    return "";
+    return;
   }
   int maxDepth = MAX_SEARCH_DEPTH;
 
@@ -97,20 +73,8 @@ std::string Search::searchBestMove() {
     printInfoLine(bestEval, bestLine, currentDepth, nps, elapsed_time);
 
     // Check if we should stop.
-    bool reached_soft_limit = elapsed_time >= soft_time_limit;
-
-    if (reached_soft_limit) {
-
-      bool should_increase_time = best_move_changes >= 2 && elapsed_time < hard_time_limit / 3;
-
-      if (should_increase_time) {
-
-        soft_time_limit += soft_time_limit * 0.3;
-        best_move_changes = 0;
-
-      } else {
-        break;
-      }
+    if (manageTime(elapsed_time)) {
+      break;
     }
   }
 
@@ -120,32 +84,26 @@ std::string Search::searchBestMove() {
     if (!moves.empty()) {
       bestMove = moves[0];
     } else {
-      return "";
+      std::cout << "bestmove (none)" << std::endl;
+      return;
     }
   }
 
-  return uci::moveToUci(bestMove);
+  std::cout << "bestmove " << uci::moveToUci(bestMove) << std::endl;
 }
 
 int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
   if (stopSearchFlag) {
-    return 0; // Consider returning 0 or evaluation instead
+    return 0;
   }
 
-  if (time_controls_enabled) {
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
-            .count();
-    if (elapsed_time >= hard_time_limit) {
-      stopSearchFlag = true;
-      return 0; // Consider returning 0 or evaluation instead
-    }
+  if (checkHardTimeLimit()) {
+    return 0;
   }
 
   pv.clear();
 
-  // FIX: Check for draws BEFORE incrementing position counter
+  // FIX: Check for draws BEFORE incrementing position counter. But this is not clean
   if (ply > 0) {
     if ((isGameOver(board) && getGameOverReason(board) == GameResultReason::THREEFOLD_REPETITION) ||
         (board.isHalfMoveDraw() && board.getHalfMoveDrawType().second == GameResult::DRAW)) {
@@ -171,7 +129,9 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
 
   // FIX: Don't extend PV when using TT hit
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
-    // Simply return the TT score - don't try to build PV here
+    if (ttMove != Move::NULL_MOVE) {
+      pv.push_back(ttMove);
+    }
     return ttScore;
   }
 
@@ -313,7 +273,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, int ply) {
   if (stopSearchFlag) {
-    return 0; // Consider returning evaluation instead
+    return 0;
   }
   positionsSearched++;
 
@@ -333,7 +293,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   orderQuiescMoves(moves);
 
   for (Move move : moves) {
-    // FIX: Delta pruning - skip obviously bad captures
+    // Delta pruning - skip obviously bad captures
     if (board.isCapture(move)) {
       Piece victim = board.at(move.to());
       if (standPat + getPieceValue(victim) + 200 < alpha) {
@@ -440,4 +400,58 @@ bool Search::isGameOver(const chess::Board &board) {
 GameResultReason Search::getGameOverReason(const chess::Board &board) {
   auto result = board.isGameOver();
   return result.first;
+}
+
+bool Search::manageTime(long long elapsed_time) {
+  if (!time_controls_enabled) {
+    return false; // Don't stop if time controls are off
+  }
+
+  if (elapsed_time >= soft_time_limit) {
+    if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
+      soft_time_limit += soft_time_limit * 0.3;
+      best_move_changes = 0;
+      return false; // Continue searching
+    }
+    return true; // Stop searching
+  }
+  return false; // Don't stop yet
+}
+
+bool Search::checkHardTimeLimit() {
+  if (time_controls_enabled) {
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
+            .count();
+    if (elapsed_time >= hard_time_limit) {
+      stopSearchFlag = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int currentDepth,
+                           long long nps, long long elapsed_time) {
+  std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
+            << elapsed_time << " nps " << nps << " score ";
+
+  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
+    int movesToMate;
+    if (bestEval > 0) { // White is mating
+      movesToMate = MATE_SCORE - bestEval;
+    } else {
+      movesToMate = MATE_SCORE + bestEval;
+    }
+    int fullMovesToMate = (movesToMate + 1) / 2;
+    std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
+  } else {
+    std::cout << "cp " << bestEval << " pv ";
+  }
+
+  for (const auto &move : bestLine) {
+    std::cout << move << " ";
+  }
+  std::cout << std::endl;
 }

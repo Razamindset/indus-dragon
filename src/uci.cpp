@@ -242,16 +242,10 @@ void UCIAdapter::handleGo(std::istringstream &iss) {
   // Start a new search in a separate thread
   searchThread = std::thread([this]() {
     try {
-      std::string bestMove = engine->getBestMove();
+      engine->getBestMove();
 
       // FIXED: Use atomic check to prevent race condition
       if (!stopRequested.load()) {
-        std::string bestMoveMsg = "bestmove " + bestMove;
-        std::cout << bestMoveMsg << std::endl;
-        fflush(stdout);
-        logOutput(bestMoveMsg);
-        logCommand("Best move found: " + bestMove);
-      } else {
         logCommand("Search was stopped before completion");
       }
     } catch (const std::exception &e) {

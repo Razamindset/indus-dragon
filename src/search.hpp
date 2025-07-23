@@ -15,7 +15,7 @@ class Search {
 public:
   Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
          Evaluation &evaluator, bool time_controls_enabled);
-  std::string searchBestMove();
+  void searchBestMove();
   void stopSearch() { stopSearchFlag = true; }
   void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
 
@@ -44,6 +44,7 @@ private:
   GameResultReason getGameOverReason(const chess::Board &board);
   int getPieceValue(Piece piece);
   void printInfoLine(int eval, std::vector<Move> pv, int currentDepth, long long nps,
-                     auto elapsed_time);
-  void handleTime();
+                     long long elapsed_time);
+  bool manageTime(long long elapsed_time);
+  bool checkHardTimeLimit();
 };
