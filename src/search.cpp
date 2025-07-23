@@ -81,8 +81,7 @@ std::string Search::searchBestMove() {
         movesToMate = MATE_SCORE + bestEval;
       }
       int fullMovesToMate = (movesToMate + 1) / 2;
-
-      std::cout << "mate " << fullMovesToMate << " pv ";
+      std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
     } else {
       std::cout << "cp " << bestEval << " pv ";
     }
@@ -124,7 +123,7 @@ std::string Search::searchBestMove() {
 
 int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
   if (stopSearchFlag) {
-    return beta;
+    return 0; // Consider returning 0 or evaluation instead
   }
 
   if (time_controls_enabled) {
@@ -134,16 +133,19 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
             .count();
     if (elapsed_time >= hard_time_limit) {
       stopSearchFlag = true;
-      return beta;
+      return 0; // Consider returning 0 or evaluation instead
     }
   }
 
   pv.clear();
-  if (ply > 0)
-    if ((board.isRepetition(1)) ||
+
+  // FIX: Check for draws BEFORE incrementing position counter
+  if (ply > 0) {
+    if ((isGameOver(board) && getGameOverReason(board) == GameResultReason::THREEFOLD_REPETITION) ||
         (board.isHalfMoveDraw() && board.getHalfMoveDrawType().second == GameResult::DRAW)) {
       return 0;
     }
+  }
 
   positionsSearched++;
 
@@ -161,20 +163,24 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   TTEntryType entry_type;
   int originalAlpha = alpha;
 
+  // FIX: Don't extend PV when using TT hit
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
-    if (ttMove != Move::NULL_MOVE) {
-      pv.push_back(ttMove);
-      board.makeMove(ttMove);
-      std::vector<Move> childPv;
-      negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
-      board.unmakeMove(ttMove);
-      pv.insert(pv.end(), childPv.begin(), childPv.end());
-    }
+    // Simply return the TT score - don't try to build PV here
     return ttScore;
   }
 
   Movelist moves;
   movegen::legalmoves(moves, board);
+
+  // FIX: Check for no legal moves (checkmate/stalemate)
+  if (moves.size() == 0) {
+    if (board.inCheck()) {
+      return -MATE_SCORE + ply; // Checkmate - prefer later mates
+    } else {
+      return 0; // Stalemate
+    }
+  }
+
   orderMoves(moves, ttMove, ply);
 
   Move bestMove = Move::NULL_MOVE;
@@ -197,14 +203,18 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
     alpha = std::max(bestScore, alpha);
 
     if (alpha >= beta) {
-      if (!board.isCapture(move)) {
+      // Store killer moves BEFORE breaking
+      if (!board.isCapture(move) && move.typeOf() != Move::PROMOTION) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
       }
-      break;
+      // FIX: Still store in TT even with beta cutoff
+      tt_helper.storeTT(boardhash, depth, bestScore, TTEntryType::LOWER, bestMove, ply);
+      return beta; // Beta cutoff / Fail High
     }
   }
 
+  // Store in transposition table
   TTEntryType entryType;
   if (bestScore <= originalAlpha) {
     entryType = TTEntryType::UPPER;
@@ -214,9 +224,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
     entryType = TTEntryType::EXACT;
   }
 
-  if (bestMove != Move::NULL_MOVE) {
-    tt_helper.storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
-  }
+  tt_helper.storeTT(boardhash, depth, bestScore, entryType, bestMove, ply);
 
   return bestScore;
 }
@@ -234,39 +242,48 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
   for (Move move : moves) {
     int score = 0;
 
-    // Priorotize ttMove and break after putthing on top
+    // Prioritize ttMove and break after putting on top
     if (ttMove != Move::NULL_MOVE && move == ttMove) {
       scoredMoves.emplace_back(move, 10000);
       continue;
     }
 
-    // KIller moves score
-    if (move == killer1) {
-      score = 9000; // High score for primary killer
-    } else if (move == killer2) {
-      score = 8500; // Slightly lower score for secondary killer
+    // Killer moves score
+    if (!board.isCapture(move)) {
+      if (move == killer1) {
+        score = 9000; // High score for primary killer
+      } else if (move == killer2) {
+        score = 8500; // Slightly lower score for secondary killer
+      }
     }
-
-    // Todo: see how we can order checks
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
-      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
+      score += 10000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
+    }
+
+    // Prioritize checks - FIX: Only if not a capture (to avoid double bonus)
+    if (!board.isCapture(move)) {
+      board.makeMove(move);
+      if (board.inCheck()) {
+        score += 1000; // High bonus for giving check
+      }
+      board.unmakeMove(move);
     }
 
     // Prioritize promotions
     if (move.promotionType() == QUEEN)
       score += 900;
-    if (move.promotionType() == ROOK)
+    else if (move.promotionType() == ROOK)
       score += 500;
-    if (move.promotionType() == BISHOP)
+    else if (move.promotionType() == BISHOP)
       score += 320;
-    if (move.promotionType() == KNIGHT)
+    else if (move.promotionType() == KNIGHT)
       score += 300;
 
-    // Give a slight edge castling
+    // Give a slight edge to castling
     if (move.typeOf() == Move::CASTLING) {
       score += 300;
     }
@@ -289,7 +306,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, int ply) {
   if (stopSearchFlag) {
-    return beta;
+    return 0; // Consider returning evaluation instead
   }
   positionsSearched++;
 
@@ -309,13 +326,21 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   orderQuiescMoves(moves);
 
   for (Move move : moves) {
+    // FIX: Delta pruning - skip obviously bad captures
+    if (board.isCapture(move)) {
+      Piece victim = board.at(move.to());
+      if (standPat + getPieceValue(victim) + 200 < alpha) {
+        continue; // Skip this capture as it won't improve alpha
+      }
+    }
+
     board.makeMove(move);
     int score = -quiescenceSearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
 
     alpha = std::max(alpha, score);
     if (alpha >= beta) {
-      break;
+      return beta;
     }
   }
 
@@ -349,6 +374,14 @@ void Search::orderQuiescMoves(Movelist &moves) {
         score += 300;
       }
     }
+
+    // Check for checks
+    board.makeMove(move);
+    if (board.inCheck()) {
+      isInteresting = true;
+      score += 100; // Bonus for giving check
+    }
+    board.unmakeMove(move);
 
     if (isInteresting) {
       scoredMoves.emplace_back(move, score);
