@@ -1,1 +1,5 @@
 1. Add things like null move pruning. Delta pruning aspiration windows etc. So we can reach higher depths
+2. Refactor the logging system to captue rall UCI communication. This includes:
+    - Modifying the Search class to use a callback for output.
+    - Updating the Engine class to pass the callback to the Search class.
+    - Revamping the UCIAdapter to log all incoming and outgoing communication through a single mechanism.
