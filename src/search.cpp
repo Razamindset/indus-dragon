@@ -103,14 +103,6 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
 
   pv.clear();
 
-  // FIX: Check for draws BEFORE incrementing position counter. But this is not clean
-  if (ply > 0) {
-    if ((isGameOver(board) && getGameOverReason(board) == GameResultReason::THREEFOLD_REPETITION) ||
-        (board.isHalfMoveDraw() && board.getHalfMoveDrawType().second == GameResult::DRAW)) {
-      return 0;
-    }
-  }
-
   positionsSearched++;
 
   if (isGameOver(board)) {
@@ -176,7 +168,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
       }
       // FIX: Still store in TT even with beta cutoff
       tt_helper.storeTT(boardhash, depth, bestScore, TTEntryType::LOWER, bestMove, ply);
-      return beta; // Beta cutoff / Fail High
+      break;
     }
   }
 
@@ -222,14 +214,15 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
 
+    // ! Expensive
     // Prioritize checks - FIX: Only if not a capture (to avoid double bonus)
-    if (!board.isCapture(move)) {
-      board.makeMove(move);
-      if (board.inCheck()) {
-        score += 1000; // High bonus for giving check
-      }
-      board.unmakeMove(move);
-    }
+    // if (!board.isCapture(move)) {
+    //   board.makeMove(move);
+    //   if (board.inCheck()) {
+    //     score += 1000; // High bonus for giving check
+    //   }
+    //   board.unmakeMove(move);
+    // }
 
     // Prioritize promotions
     if (move.promotionType() == QUEEN)
@@ -307,7 +300,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
 
     alpha = std::max(alpha, score);
     if (alpha >= beta) {
-      return beta;
+      break;
     }
   }
 
@@ -342,13 +335,14 @@ void Search::orderQuiescMoves(Movelist &moves) {
       }
     }
 
+    // ! Expensive
     // Check for checks
-    board.makeMove(move);
-    if (board.inCheck()) {
-      isInteresting = true;
-      score += 100; // Bonus for giving check
-    }
-    board.unmakeMove(move);
+    // board.makeMove(move);
+    // if (board.inCheck()) {
+    //   isInteresting = true;
+    //   score += 100; // Bonus for giving check
+    // }
+    // board.unmakeMove(move);
 
     if (isInteresting) {
       scoredMoves.emplace_back(move, score);
