@@ -17,11 +17,6 @@ private:
   void evaluateKingEndgameScore(const Board &board, int &eval);
   void evaluateRooks(int &eval, const Bitboard &allPawns, const Bitboard &rooks,
                      const Bitboard &friendlyPawns, int multiplier);
-  void evaluateKnightOutposts(int &eval, const Bitboard &knights, const Bitboard &enemyPawns,
-                              int multiplier);
-  void evaluateMobility(int &eval, const Board &board, const Bitboard &knights,
-                        const Bitboard &bishops, const Bitboard &rooks, const Bitboard &queens,
-                        int multiplier);
   int manhattanDistance(Square s1, Square s2) {
     return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
   }

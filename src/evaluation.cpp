@@ -52,13 +52,6 @@ int Evaluation::evaluate(const chess::Board &board) {
       eval -= 15;
   }
 
-  if (whiteBishops.count() >= 2) {
-    eval += 50; // Bishop pair bonus for white
-  }
-  if (blackBishops.count() >= 2) {
-    eval -= 50; // Bishop pair bonus for black
-  }
-
   evaluatePST(board, eval, isEndgame);
 
   evaluatePawns(eval, whitePawns, blackPawns);
@@ -67,17 +60,6 @@ int Evaluation::evaluate(const chess::Board &board) {
 
   evaluateRooks(eval, allPawns, whiteRooks, whitePawns, 1);
   evaluateRooks(eval, allPawns, blackRooks, blackPawns, -1);
-  // Rooks on 7th rank
-  Bitboard seventhRank = Bitboard(0x00FF000000000000ULL);
-  Bitboard secondRank = Bitboard(0x000000000000FF00ULL);
-  eval += (whiteRooks & seventhRank).count() * 40;
-  eval -= (blackRooks & secondRank).count() * 40;
-
-  evaluateKnightOutposts(eval, whiteKnights, blackPawns, 1);
-  evaluateKnightOutposts(eval, blackKnights, whitePawns, -1);
-
-  evaluateMobility(eval, board, whiteKnights, whiteBishops, whiteRooks, whiteQueens, 1);
-  evaluateMobility(eval, board, blackKnights, blackBishops, blackRooks, blackQueens, -1);
 
   if (isEndgame) {
     evaluateKingEndgameScore(board, eval);
@@ -222,84 +204,6 @@ void Evaluation::evaluateRooks(int &eval, const Bitboard &allPawns, const Bitboa
       eval += 15 * multiplier; // Semi-open file bonus
     }
   }
-}
-
-void Evaluation::evaluateKnightOutposts(int &eval, const Bitboard &knights,
-                                        const Bitboard &enemyPawns, int multiplier) {
-
-  // Create masks for advanced ranks where outposts matter
-  Bitboard advancedRanks;
-  if (multiplier == 1) {                             // White
-    advancedRanks = Bitboard(0x00FFFFFF00000000ULL); // Ranks 5-8
-  } else {                                           // Black
-    advancedRanks = Bitboard(0x00000000FFFFFF00ULL); // Ranks 2-5
-  }
-
-  // Only consider knights on advanced ranks
-  Bitboard advancedKnights = knights & advancedRanks;
-  if (!advancedKnights)
-    return; // Early exit if no advanced knights
-
-  // Create pawn attack mask - all squares enemy pawns can attack
-  Bitboard enemyPawnAttacks;
-  if (multiplier == 1) { // White knights vs black pawns
-    enemyPawnAttacks = ((enemyPawns & ~Bitboard(0x0101010101010101ULL)) << 7) | // Left attacks
-                       ((enemyPawns & ~Bitboard(0x8080808080808080ULL)) << 9);  // Right attacks
-  } else { // Black knights vs white pawns
-    enemyPawnAttacks = ((enemyPawns & ~Bitboard(0x8080808080808080ULL)) >> 7) | // Right attacks
-                       ((enemyPawns & ~Bitboard(0x0101010101010101ULL)) >> 9);  // Left attacks
-  }
-
-  // Knights that can't be attacked by pawns = outposts
-  Bitboard outpostKnights = advancedKnights & ~enemyPawnAttacks;
-
-  // Award bonus for each outpost knight
-  eval += outpostKnights.count() * 25 * multiplier;
-}
-
-void Evaluation::evaluateMobility(int &eval, const Board &board, const Bitboard &knights,
-                                  const Bitboard &bishops, const Bitboard &rooks,
-                                  const Bitboard &queens, int multiplier) {
-
-  Bitboard occupied = board.occ(); // All pieces on board
-  Bitboard friendlyPieces = (multiplier == 1) ? board.us(Color::WHITE) : board.us(Color::BLACK);
-
-  int mobility = 0;
-
-  // Knight mobility
-  Bitboard tempKnights = knights;
-  while (tempKnights) {
-    Square sq = tempKnights.pop();
-    Bitboard moves = attacks::knight(sq) & ~friendlyPieces; // Can't capture own pieces
-    mobility += moves.count() * 4;                          // 4 points per square
-  }
-
-  // Bishop mobility
-  Bitboard tempBishops = bishops;
-  while (tempBishops) {
-    Square sq = tempBishops.pop();
-    Bitboard moves = attacks::bishop(sq, occupied) & ~friendlyPieces;
-    mobility += moves.count() * 3; // 3 points per square
-  }
-
-  // Rook mobility
-  Bitboard tempRooks = rooks;
-  while (tempRooks) {
-    Square sq = tempRooks.pop();
-    Bitboard moves = attacks::rook(sq, occupied) & ~friendlyPieces;
-    mobility += moves.count() * 2; // 2 points per square
-  }
-
-  // Queen mobility (but limit it so queens don't dominate)
-  Bitboard tempQueens = queens;
-  while (tempQueens) {
-    Square sq = tempQueens.pop();
-    Bitboard moves = attacks::queen(sq, occupied) & ~friendlyPieces;
-    int queenMobility = std::min(moves.count(), 14); // Cap at 14 squares
-    mobility += queenMobility * 1;                   // 1 point per square
-  }
-
-  eval += mobility * multiplier;
 }
 
 // Calculate King endgame score
