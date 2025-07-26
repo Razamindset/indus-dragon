@@ -113,13 +113,18 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
     return quiescenceSearch(alpha, beta, ply);
   }
 
+  // This position has appeared second time
+  if(board.isRepetition(1)){
+    return 0;
+  }
+
   uint64_t boardhash = board.hash();
   int ttScore = 0;
   Move ttMove = Move::NULL_MOVE;
   TTEntryType entry_type;
   int originalAlpha = alpha;
 
-  // FIX: Don't extend PV when using TT hit
+  // See if a score exists in tt.
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
     if (ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
@@ -133,9 +138,9 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   // FIX: Check for no legal moves (checkmate/stalemate)
   if (moves.size() == 0) {
     if (board.inCheck()) {
-      return -MATE_SCORE + ply; // Checkmate - prefer later mates
+      return -MATE_SCORE + ply; // Checkmate Score
     } else {
-      return 0; // Stalemate
+      return 0; // Draw
     }
   }
 
@@ -214,7 +219,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
 
-    // ! Expensive
+    // ! Expensive For normal search But donot skip in qsearch
     // Prioritize checks - FIX: Only if not a capture (to avoid double bonus)
     // if (!board.isCapture(move)) {
     //   board.makeMove(move);
@@ -335,14 +340,14 @@ void Search::orderQuiescMoves(Movelist &moves) {
       }
     }
 
-    // ! Expensive
+    // ! Expensive But we cannot miss checks in q search
     // Check for checks
-    // board.makeMove(move);
-    // if (board.inCheck()) {
-    //   isInteresting = true;
-    //   score += 100; // Bonus for giving check
-    // }
-    // board.unmakeMove(move);
+    board.makeMove(move);
+    if (board.inCheck()) {
+      isInteresting = true;
+      score += 100; // Bonus for giving check
+    }
+    board.unmakeMove(move);
 
     if (isInteresting) {
       scoredMoves.emplace_back(move, score);
