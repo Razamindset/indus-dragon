@@ -14,7 +14,6 @@ void Search::searchBestMove() {
   if (isGameOver(board)) {
     return;
   }
-  int maxDepth = MAX_SEARCH_DEPTH;
 
   if (time_controls_enabled) {
     CalculatedTime times = time_manager.calculateSearchTime(board);
@@ -36,7 +35,7 @@ void Search::searchBestMove() {
   std::vector<Move> bestLine;
 
   // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
+  for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
     std::vector<Move> currentBestLine;
 
     int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
@@ -114,7 +113,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   }
 
   // This position has appeared second time
-  if(board.isRepetition(1)){
+  if (board.isRepetition(1)) {
     return 0;
   }
 
@@ -291,14 +290,6 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   orderQuiescMoves(moves);
 
   for (Move move : moves) {
-    // Delta pruning - skip obviously bad captures
-    if (board.isCapture(move)) {
-      Piece victim = board.at(move.to());
-      if (standPat + getPieceValue(victim) + 200 < alpha) {
-        continue; // Skip this capture as it won't improve alpha
-      }
-    }
-
     board.makeMove(move);
     int score = -quiescenceSearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);

@@ -3,3 +3,4 @@
     - Modifying the Search class to use a callback for output.
     - Updating the Engine class to pass the callback to the Search class.
     - Revamping the UCIAdapter to log all incoming and outgoing communication through a single mechanism.
+3. Improve the evaluation function
