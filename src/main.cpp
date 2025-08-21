@@ -1,8 +1,10 @@
 #include "uci.hpp"
 #include <fstream>
+#include "nnue/nnue.h"
 
 int main() {
   try {
+    nnue_init("nn-04cf2b4ed1da.nnue");
     Engine engine;
     UCIAdapter adapter(&engine);
     adapter.start();

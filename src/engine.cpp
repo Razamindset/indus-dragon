@@ -1,7 +1,5 @@
 #include "engine.hpp"
 
-#include "piece-maps.hpp"
-
 Engine::Engine()
     : board(), evaluator(), tt_helper(), time_manager(),
       search(board, time_manager, tt_helper, evaluator, false) {}
