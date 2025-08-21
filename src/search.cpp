@@ -114,7 +114,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   }
 
   // This position has appeared second time
-  if(board.isRepetition(1)){
+  if (board.isRepetition(1)) {
     return 0;
   }
 
@@ -387,8 +387,8 @@ int Search::evaluate(int ply) {
     }
     return DRAW_SCORE;
   }
-  int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
-  return evaluator.evaluate(board) * perspective;
+  // int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
+  return evaluator.evaluate(board);
 }
 
 bool Search::isGameOver(const chess::Board &board) {
