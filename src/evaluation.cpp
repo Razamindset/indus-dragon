@@ -1,6 +1,13 @@
 #include "evaluation.hpp"
 #include "constants.hpp"
+#include "nnue/nnue.h"
 #include "piece-maps.hpp"
+
+Evaluation::Evaluation() { nnue_init("nn-04cf2b4ed1da.nnue"); }
+
+int Evaluation::new_evaluate(const Board &board) {
+  return nnue_evaluate_fen(board.getFen().c_str());
+}
 
 // Evaluation related functions
 bool Evaluation::hasCastled(const chess::Board &board, chess::Color color) {
@@ -13,6 +20,9 @@ bool Evaluation::hasCastled(const chess::Board &board, chess::Color color) {
 }
 
 int Evaluation::evaluate(const chess::Board &board) {
+
+  return new_evaluate(board);
+
   int eval = 0;
 
   // Initialize all bitboards once

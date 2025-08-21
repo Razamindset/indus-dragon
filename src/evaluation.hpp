@@ -6,14 +6,14 @@ using namespace chess;
 
 class Evaluation {
 public:
-  Evaluation() {};
+  Evaluation();
   int evaluate(const Board &board);
+  int new_evaluate(const Board &board);
 
 private:
   bool hasCastled(const Board &board, Color color);
   void evaluatePST(const Board &board, int &eval, bool isEndgame);
-  void evaluatePawns(int &eval, const Bitboard &whitePawns,
-                     const Bitboard &blackPawns);
+  void evaluatePawns(int &eval, const Bitboard &whitePawns, const Bitboard &blackPawns);
   bool isPassedPawn(Square sq, Color color, const Bitboard &pawns);
   void evaluateKingEndgameScore(const Board &board, int &eval);
   int manhattanDistance(Square s1, Square s2) {
