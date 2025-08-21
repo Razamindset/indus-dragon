@@ -387,7 +387,7 @@ int Search::evaluate(int ply) {
     }
     return DRAW_SCORE;
   }
-  int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
+  // int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
   return evaluator.evaluate(board);
 }
 
