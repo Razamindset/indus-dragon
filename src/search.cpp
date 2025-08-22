@@ -125,7 +125,8 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   int originalAlpha = alpha;
 
   // See if a score exists in tt.
-  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type)) {
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type) &&
+      ply > 0) {
     if (ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
     }
@@ -291,13 +292,6 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   orderQuiescMoves(moves);
 
   for (Move move : moves) {
-    // Delta pruning - skip obviously bad captures
-    if (board.isCapture(move)) {
-      Piece victim = board.at(move.to());
-      if (standPat + getPieceValue(victim) + 200 < alpha) {
-        continue; // Skip this capture as it won't improve alpha
-      }
-    }
 
     board.makeMove(move);
     int score = -quiescenceSearch(-beta, -alpha, ply + 1);
@@ -387,7 +381,6 @@ int Search::evaluate(int ply) {
     }
     return DRAW_SCORE;
   }
-  // int perspective = (board.sideToMove() == Color::WHITE) ? 1 : -1;
   return evaluator.evaluate(board);
 }
 
