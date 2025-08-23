@@ -26,21 +26,21 @@ git clone https://github.com/Razamindset/indus-dragon
 cd indus-dragon
 ```
 
-2. Create a build directory and navigate to it:
+2. Build the executable
 
 ```sh
-mkdir build
-cd build
+make
 ```
 
-3. Configure and build the project:
+The executable will be created in the root of the project.
+Make sure the .nnue file is in the same directory form where u run the programme.
+U can also use cmake if u want. Pretty same Configration just make sure to add paths for all the files.
+
+3. Clean .o files
 
 ```sh
-cmake ..
-cmake --build .
+make clean
 ```
-
-The executable will be created in the `build` directory.
 
 ## Running the Engine
 
@@ -70,5 +70,6 @@ Indus Dragon uses:
 
 - [chess-library](https://github.com/Disservin/chess-library) for board representation
 - Techniques and algorithms from [Chess Programming Wiki](https://www.chessprogramming.org)
+- NNUE probing Library from [dshawul](https://github.com/dshawul) [Library](https://github.com/dshawul/nnue-probe)
 
 Stay tuned for updates!
