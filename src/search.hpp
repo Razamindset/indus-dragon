@@ -1,17 +1,18 @@
 #pragma once
 
-#include "chess.hpp"
-#include "time_manager.hpp"
-#include "tt.hpp"
 #include <atomic>
 #include <chrono>
 #include <string>
 #include <vector>
 
+#include "chess.hpp"
+#include "time_manager.hpp"
+#include "tt.hpp"
+
 using namespace chess;
 
 class Search {
-public:
+ public:
   Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
          bool time_controls_enabled);
   void searchBestMove();
@@ -20,7 +21,7 @@ public:
   void logMessage(const std::string &message);
   void toggleLogs() { storeLogs = !storeLogs; }
 
-private:
+ private:
   Board &board;
   TimeManager &time_manager;
   TranspositionTable &tt_helper;
@@ -47,8 +48,8 @@ private:
   bool isGameOver(const chess::Board &board);
   GameResultReason getGameOverReason(const chess::Board &board);
   int getPieceValue(Piece piece);
-  void printInfoLine(int eval, std::vector<Move> pv, int currentDepth, long long nps,
-                     long long elapsed_time);
+  void printInfoLine(int eval, std::vector<Move> pv, int currentDepth,
+                     long long nps, long long elapsed_time);
   bool manageTime(long long elapsed_time);
   bool checkHardTimeLimit();
   bool storeLogs = false;

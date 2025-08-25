@@ -1,12 +1,16 @@
 #include "search.hpp"
-#include "constants.hpp"
-#include "nnue/nnue.h"
+
 #include <fstream>
 #include <iostream>
 
-Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
-               bool time_controls_enabled)
-    : board(board), time_manager(time_manager), tt_helper(tt_helper),
+#include "constants.hpp"
+#include "nnue/nnue.h"
+
+Search::Search(Board &board, TimeManager &time_manager,
+               TranspositionTable &tt_helper, bool time_controls_enabled)
+    : board(board),
+      time_manager(time_manager),
+      tt_helper(tt_helper),
       time_controls_enabled(time_controls_enabled) {}
 
 void Search::searchBestMove() {
@@ -39,7 +43,8 @@ void Search::searchBestMove() {
   for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
     std::vector<Move> currentBestLine;
 
-    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
+    int bestEval =
+        negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag && currentDepth > 1) {
@@ -58,9 +63,9 @@ void Search::searchBestMove() {
 
     // Elapsed Time and NPS
     auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
-            .count();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            current_time - search_start_time)
+                            .count();
 
     long long nps = 0;
 
@@ -97,7 +102,8 @@ void Search::searchBestMove() {
   logMessage(bestmove_str);
 }
 
-int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
+int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
+                    int ply) {
   if (stopSearchFlag) {
     return 0;
   }
@@ -130,7 +136,8 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   int originalAlpha = alpha;
 
   // See if a score exists in tt.
-  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply, entry_type) &&
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply,
+                        entry_type) &&
       ply > 0) {
     if (ttMove != Move::NULL_MOVE) {
       pv.push_back(ttMove);
@@ -144,9 +151,9 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
   // FIX: Check for no legal moves (checkmate/stalemate)
   if (moves.size() == 0) {
     if (board.inCheck()) {
-      return -MATE_SCORE + ply; // Checkmate Score
+      return -MATE_SCORE + ply;  // Checkmate Score
     } else {
-      return 0; // Draw
+      return 0;  // Draw
     }
   }
 
@@ -178,7 +185,8 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int p
         killerMoves[ply][0] = move;
       }
       // FIX: Still store in TT even with beta cutoff
-      tt_helper.storeTT(boardhash, depth, bestScore, TTEntryType::LOWER, bestMove, ply);
+      tt_helper.storeTT(boardhash, depth, bestScore, TTEntryType::LOWER,
+                        bestMove, ply);
       break;
     }
   }
@@ -248,9 +256,9 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
     // Killer moves score
     if (!board.isCapture(move)) {
       if (move == killer1) {
-        score = 500; // High score for primary killer
+        score = 500;  // High score for primary killer
       } else if (move == killer2) {
-        score = 400; // Slightly lower score for secondary killer
+        score = 400;  // Slightly lower score for secondary killer
       }
     }
 
@@ -297,7 +305,6 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   orderQuiescMoves(moves);
 
   for (Move move : moves) {
-
     board.makeMove(move);
     int score = -quiescenceSearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
@@ -344,7 +351,7 @@ void Search::orderQuiescMoves(Movelist &moves) {
     board.makeMove(move);
     if (board.inCheck()) {
       isInteresting = true;
-      score += 100; // Bonus for giving check
+      score += 100;  // Bonus for giving check
     }
     board.unmakeMove(move);
 
@@ -372,18 +379,18 @@ void Search::clearKiller() {
 
 int Search::getPieceValue(Piece piece) {
   switch (piece) {
-  case PieceGenType::PAWN:
-    return 100;
-  case PieceGenType::KNIGHT:
-    return 300;
-  case PieceGenType::BISHOP:
-    return 320;
-  case PieceGenType::ROOK:
-    return 500;
-  case PieceGenType::QUEEN:
-    return 900;
-  default:
-    return 0; // King has no material value
+    case PieceGenType::PAWN:
+      return 100;
+    case PieceGenType::KNIGHT:
+      return 300;
+    case PieceGenType::BISHOP:
+      return 320;
+    case PieceGenType::ROOK:
+      return 500;
+    case PieceGenType::QUEEN:
+      return 900;
+    default:
+      return 0;  // King has no material value
   }
 }
 
@@ -409,26 +416,26 @@ GameResultReason Search::getGameOverReason(const chess::Board &board) {
 
 bool Search::manageTime(long long elapsed_time) {
   if (!time_controls_enabled) {
-    return false; // Don't stop if time controls are off
+    return false;  // Don't stop if time controls are off
   }
 
   if (elapsed_time >= soft_time_limit) {
     if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
       soft_time_limit += soft_time_limit * 0.3;
       best_move_changes = 0;
-      return false; // Continue searching
+      return false;  // Continue searching
     }
-    return true; // Stop searching
+    return true;  // Stop searching
   }
-  return false; // Don't stop yet
+  return false;  // Don't stop yet
 }
 
 bool Search::checkHardTimeLimit() {
   if (time_controls_enabled) {
     auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(current_time - search_start_time)
-            .count();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            current_time - search_start_time)
+                            .count();
     if (elapsed_time >= hard_time_limit) {
       stopSearchFlag = true;
       return true;
@@ -437,21 +444,23 @@ bool Search::checkHardTimeLimit() {
   return false;
 }
 
-void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int currentDepth,
-                           long long nps, long long elapsed_time) {
+void Search::printInfoLine(int bestEval, std::vector<Move> bestLine,
+                           int currentDepth, long long nps,
+                           long long elapsed_time) {
   std::stringstream info_ss;
-  info_ss << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
-          << elapsed_time << " nps " << nps << " score ";
+  info_ss << "info depth " << currentDepth << " nodes " << positionsSearched
+          << " time " << elapsed_time << " nps " << nps << " score ";
 
   if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
     int movesToMate;
-    if (bestEval > 0) { // White is mating
+    if (bestEval > 0) {  // White is mating
       movesToMate = MATE_SCORE - bestEval;
     } else {
       movesToMate = MATE_SCORE + bestEval;
     }
     int fullMovesToMate = (movesToMate + 1) / 2;
-    info_ss << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
+    info_ss << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate)
+            << " pv ";
   } else {
     info_ss << "cp " << bestEval << " pv ";
   }
@@ -465,8 +474,7 @@ void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int current
 }
 
 void Search::logMessage(const std::string &message) {
-  if (!storeLogs)
-    return;
+  if (!storeLogs) return;
 
   try {
     std::ofstream logFile("uci_log.txt", std::ios_base::app);

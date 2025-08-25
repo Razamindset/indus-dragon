@@ -1,7 +1,10 @@
 #include "engine.hpp"
 
 Engine::Engine()
-    : board(), tt_helper(), time_manager(), search(board, time_manager, tt_helper, false) {}
+    : board(),
+      tt_helper(),
+      time_manager(),
+      search(board, time_manager, tt_helper, false) {}
 
 void Engine::printBoard() { std::cout << board; }
 
@@ -11,10 +14,11 @@ void Engine::initilizeEngine() {
   board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 
-void Engine::setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo,
-                             int movetime) {
+void Engine::setSearchLimits(int wtime, int btime, int winc, int binc,
+                             int movestogo, int movetime) {
   bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
-  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime, false);
+  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime,
+                             false);
   search.setTimeControlsEnabled(time_controls_enabled);
 }
 
@@ -24,9 +28,8 @@ void Engine::makeMove(std::string move) {
 }
 
 void Engine::handle_stop() {
-
   if (searchThread.joinable()) {
-    stopRequested = true; // Signal stop first
+    stopRequested = true;  // Signal stop first
 
     stopSearch();
 
@@ -85,8 +88,7 @@ void Engine::uci_loop() {
         // FEN has 6 parts: board, side, castling, en passant, halfmove,
         // fullmove
         for (int i = 0; i < 6 && iss >> fenPart; i++) {
-          if (!fen.empty())
-            fen += " ";
+          if (!fen.empty()) fen += " ";
           fen += fenPart;
         }
 
@@ -103,12 +105,12 @@ void Engine::uci_loop() {
     } else if (token == "d") {
       printBoard();
     } else if (token == "quit") {
-      handle_stop(); // Ensure search thread is stopped before exit
+      handle_stop();  // Ensure search thread is stopped before exit
       exit(0);
     } else if (token == "stop") {
       handle_stop();
     } else if (token == "ucinewgame") {
-      handle_stop(); // Stop any ongoing search before reinitializing
+      handle_stop();  // Stop any ongoing search before reinitializing
       initilizeEngine();
     } else if (token == "togglelogs") {
       search.toggleLogs();
@@ -134,11 +136,12 @@ void Engine::uci_loop() {
 
       bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
 
-      time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime, false);
+      time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime,
+                                 false);
 
       search.setTimeControlsEnabled(time_controls_enabled);
 
-      stopRequested = false; // Reset the stop flag
+      stopRequested = false;  // Reset the stop flag
 
       searchThread = std::thread([this]() {
         try {

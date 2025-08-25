@@ -1,4 +1,7 @@
 #include "time_manager.hpp"
+
+#include <algorithm>
+
 #include "nnue/nnue.h"
 
 CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
@@ -19,7 +22,8 @@ CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
   }
 
   // Now lets calculate for normal commands
-  long long remaining_time = board.sideToMove() == chess::Color::WHITE ? wtime : btime;
+  long long remaining_time =
+      board.sideToMove() == chess::Color::WHITE ? wtime : btime;
   long long increment = board.sideToMove() == chess::Color::WHITE ? winc : binc;
   int moves_remaining = movestogo > 0 ? movestogo : estimateMovesToGo(board);
 
@@ -42,8 +46,8 @@ CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
   double eval_factor = getEvaluationFactor(board);
 
   // Apply the calculted factors
-  long long soft_time =
-      static_cast<long long>(base_time * SOFT_TIME_FACTOR * position_factor * eval_factor);
+  long long soft_time = static_cast<long long>(base_time * SOFT_TIME_FACTOR *
+                                               position_factor * eval_factor);
 
   long long hard_time = static_cast<long long>(soft_time * HARD_TIME_FACTOR);
 
@@ -99,15 +103,15 @@ double TimeManager::getPositionFactor(const chess::Board &board) {
 
   // More legal moves = more complex position = more time
   if (mobility > 35) {
-    factor *= 1.3; // Complex position
+    factor *= 1.3;  // Complex position
   } else if (mobility < 15) {
-    factor *= 0.8; // Simple position
+    factor *= 0.8;  // Simple position
   }
 
   // Spend more time in endgame (fewer pieces, critical decisions)
   int total_pieces = count_pieces(board);
   if (total_pieces <= 12) {
-    factor *= ENDGAME_FACTOR; // Endgame precision is crucial
+    factor *= ENDGAME_FACTOR;  // Endgame precision is crucial
   }
 
   // Spend more time when in check (tactical situation)
@@ -115,12 +119,11 @@ double TimeManager::getPositionFactor(const chess::Board &board) {
     factor *= IN_CHECK_FACTOR;
   }
 
-  return std::max(0.5, std::min(2.0, factor)); // Clamp between 0.5x and 2.0x
+  return std::max(0.5, std::min(2.0, factor));  // Clamp between 0.5x and 2.0x
 }
 
 // Adjust time based on evaluation score
 double TimeManager::getEvaluationFactor(const chess::Board &board) {
-
   int eval_score = nnue_evaluate_fen(board.getFen().c_str());
 
   // Convert to our side's perspective
@@ -131,31 +134,31 @@ double TimeManager::getEvaluationFactor(const chess::Board &board) {
   double factor = 1.0;
 
   // Critical positions (close to equal) - spend more time
-  if (abs(eval_score) < 50) {         // Within 0.5 pawns
-    factor *= 1.4;                    // Spend 40% more time in critical positions
-  } else if (abs(eval_score) < 100) { // Within 1 pawn
-    factor *= 1.2;                    // Spend 20% more time
+  if (abs(eval_score) < 50) {  // Within 0.5 pawns
+    factor *= 1.4;             // Spend 40% more time in critical positions
+  } else if (abs(eval_score) < 100) {  // Within 1 pawn
+    factor *= 1.2;                     // Spend 20% more time
   }
 
   // Clearly winning positions - spend less time, play faster
-  else if (eval_score > 300) {   // Winning by 3+ pawns
-    factor *= 0.7;               // Spend 30% less time
-  } else if (eval_score > 150) { // Winning by 1.5+ pawns
-    factor *= 0.85;              // Spend 15% less time
+  else if (eval_score > 300) {    // Winning by 3+ pawns
+    factor *= 0.7;                // Spend 30% less time
+  } else if (eval_score > 150) {  // Winning by 1.5+ pawns
+    factor *= 0.85;               // Spend 15% less time
   }
 
   // Clearly losing positions - spend more time to find tactics/tricks
-  else if (eval_score < -300) {   // Losing by 3+ pawns
-    factor *= 1.3;                // Spend more time looking for tactical shots
-  } else if (eval_score < -150) { // Losing by 1.5+ pawns
-    factor *= 1.1;                // Spend slightly more time
+  else if (eval_score < -300) {    // Losing by 3+ pawns
+    factor *= 1.3;                 // Spend more time looking for tactical shots
+  } else if (eval_score < -150) {  // Losing by 1.5+ pawns
+    factor *= 1.1;                 // Spend slightly more time
   }
 
-  return std::max(0.6, std::min(1.8, factor)); // Clamp between 0.6x and 1.8x
+  return std::max(0.6, std::min(1.8, factor));  // Clamp between 0.6x and 1.8x
 }
 
-void TimeManager::setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
-                                int movetime, bool is_infinite) {
+void TimeManager::setTimevalues(int wtime, int btime, int winc, int binc,
+                                int movestogo, int movetime, bool is_infinite) {
   this->wtime = static_cast<long long>(wtime);
   this->btime = static_cast<long long>(btime);
   this->winc = static_cast<long long>(winc);
