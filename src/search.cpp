@@ -1,6 +1,9 @@
 #include "search.hpp"
 #include "constants.hpp"
 #include "nnue/nnue.h"
+#include "uci.hpp"
+#include <iostream>
+#include <sstream>
 
 Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
                bool time_controls_enabled)
@@ -82,12 +85,16 @@ void Search::searchBestMove() {
     if (!moves.empty()) {
       bestMove = moves[0];
     } else {
-      std::cout << "bestmove (none)" << std::endl;
+      const std::string bestmove_str = "bestmove (none)";
+      std::cout << bestmove_str << std::endl;
+      logMessage(bestmove_str);
       return;
     }
   }
 
-  std::cout << "bestmove " << uci::moveToUci(bestMove) << std::endl;
+  const std::string bestmove_str = "bestmove " + uci::moveToUci(bestMove);
+  std::cout << bestmove_str << std::endl;
+  logMessage(bestmove_str);
 }
 
 int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply) {
@@ -432,7 +439,8 @@ bool Search::checkHardTimeLimit() {
 
 void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int currentDepth,
                            long long nps, long long elapsed_time) {
-  std::cout << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
+  std::stringstream info_ss;
+  info_ss << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
             << elapsed_time << " nps " << nps << " score ";
 
   if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
@@ -443,13 +451,15 @@ void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int current
       movesToMate = MATE_SCORE + bestEval;
     }
     int fullMovesToMate = (movesToMate + 1) / 2;
-    std::cout << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
+    info_ss << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate) << " pv ";
   } else {
-    std::cout << "cp " << bestEval << " pv ";
+    info_ss << "cp " << bestEval << " pv ";
   }
 
   for (const auto &move : bestLine) {
-    std::cout << move << " ";
+    info_ss << move << " ";
   }
-  std::cout << std::endl;
+  std::string info_str = info_ss.str();
+  std::cout << info_str << std::endl;
+  logMessage(info_str);
 }

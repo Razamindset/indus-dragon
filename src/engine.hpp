@@ -8,8 +8,6 @@
 #include "time_manager.hpp"
 #include "tt.hpp"
 
-using namespace chess;
-
 class Engine {
 public:
   Engine();
@@ -25,7 +23,7 @@ public:
   void stopSearch();
 
 private:
-  Board board;
+  chess::Board board;
   TranspositionTable tt_helper;
   TimeManager time_manager;
   Search search;

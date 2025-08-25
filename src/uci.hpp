@@ -3,8 +3,14 @@
 #include <atomic>
 #include <string>
 #include <thread>
+#include <sstream>
 
 #include "engine.hpp"
+
+// Logging functionality
+void logMessage(const std::string &message);
+void toggleLogging();
+bool isLoggingEnabled();
 
 class UCIAdapter {
 public:
@@ -18,12 +24,8 @@ private:
   void handleGo(std::istringstream &iss);
   void handleStop();
   void handleSetOption(std::istringstream &iss);
-  void logCommand(const std::string &cmd);
-  void logOutput(const std::string &output);
-  void logError(const std::string &error);
 
   Engine *engine;
   std::thread searchThread;
   std::atomic<bool> stopRequested;
-  bool storeLogs = false;
 };

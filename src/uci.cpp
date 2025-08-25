@@ -7,66 +7,48 @@
 #include <string>
 #include <thread>
 
+namespace {
+  std::atomic<bool> storeLogs(false);
+}
+
+void logMessage(const std::string &message) {
+  if (!storeLogs)
+    return;
+  try {
+    std::ofstream logFile("uci_log.txt", std::ios_base::app);
+    if (logFile.is_open()) {
+      logFile << message << std::endl;
+      logFile.close();
+    }
+  } catch (...) {
+    // Silently ignore logging errors to prevent crashes
+  }
+}
+
+void toggleLogging() {
+  storeLogs = !storeLogs;
+  logMessage(storeLogs ? "Started storing logs" : "Stopped storing logs");
+}
+
+bool isLoggingEnabled() { return storeLogs.load(); }
+
 UCIAdapter::UCIAdapter(Engine *e) : engine(e), stopRequested(false) {}
 
 void UCIAdapter::start() {
-  logCommand("The adapter for the engine was started.");
+  logMessage("The adapter for the engine was started.");
   std::string line;
   while (std::getline(std::cin, line)) {
     try {
       processCommand(line);
     } catch (const std::exception &e) {
-      // Log errors to help debug crashes
-      logError("Exception in processCommand: " + std::string(e.what()));
+      // handle this
     }
-  }
-}
-
-void UCIAdapter::logCommand(const std::string &cmd) {
-  if (!storeLogs)
-    return;
-  try {
-    std::ofstream logFile("uci_log.txt", std::ios_base::app);
-    if (logFile.is_open()) {
-      logFile << "[CMD] " << cmd << std::endl;
-      logFile.close();
-    }
-  } catch (...) {
-    // Silently ignore logging errors to prevent crashes
-  }
-}
-
-void UCIAdapter::logOutput(const std::string &output) {
-  if (!storeLogs)
-    return;
-  try {
-    std::ofstream logFile("uci_log.txt", std::ios_base::app);
-    if (logFile.is_open()) {
-      logFile << "[OUTPUT] " << output << std::endl;
-      logFile.close();
-    }
-  } catch (...) {
-    // Silently ignore logging errors to prevent crashes
-  }
-}
-
-void UCIAdapter::logError(const std::string &error) {
-  if (!storeLogs)
-    return;
-  try {
-    std::ofstream logFile("uci_log.txt", std::ios_base::app);
-    if (logFile.is_open()) {
-      logFile << "[ERROR] " << error << std::endl;
-      logFile.close();
-    }
-  } catch (...) {
-    // Silently ignore logging errors
   }
 }
 
 void UCIAdapter::processCommand(const std::string &cmd) {
   // Log the command
-  logCommand(cmd);
+  logMessage(cmd);
 
   std::istringstream iss(cmd);
   std::string token;
@@ -78,7 +60,7 @@ void UCIAdapter::processCommand(const std::string &cmd) {
     std::string readyOk = "readyok";
     std::cout << readyOk << std::endl;
     fflush(stdout);
-    logOutput(readyOk);
+    logMessage(readyOk);
   } else if (token == "position") {
     handlePosition(iss);
   } else if (token == "d") {
@@ -93,8 +75,7 @@ void UCIAdapter::processCommand(const std::string &cmd) {
     handleStop(); // Ensure search thread is stopped before exit
     exit(0);
   } else if (token == "togglelogs") {
-    storeLogs = !storeLogs;
-    logCommand(storeLogs ? "Started storing logs" : "Stopped storing logs");
+    toggleLogging();
   } else if (token == "ucinewgame") {
     handleStop(); // Stop any ongoing search before reinitializing
     if (engine) {
@@ -111,9 +92,9 @@ void UCIAdapter::handleUCI() {
   std::string uciOk = "uciok";
 
   std::cout << idName << std::endl;
-  logOutput(idName);
+  logMessage(idName);
   std::cout << idAuthor << std::endl;
-  logOutput(idAuthor);
+  logMessage(idAuthor);
 
   // Output available options if any
   // std::cout << "option name Hash type spin default 64 min 1 max 1024" <<
@@ -121,12 +102,12 @@ void UCIAdapter::handleUCI() {
 
   std::cout << uciOk << std::endl;
   fflush(stdout);
-  logOutput(uciOk);
+  logMessage(uciOk);
 }
 
 void UCIAdapter::handlePosition(std::istringstream &iss) {
   if (!engine) {
-    logError("Engine is null in handlePosition");
+    logMessage("Engine is null in handlePosition");
     return;
   }
 
@@ -135,29 +116,27 @@ void UCIAdapter::handlePosition(std::istringstream &iss) {
 
   if (token == "startpos") {
     try {
-      engine->setPosition(
-          "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+      engine->setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
       // Process any moves that come after "startpos moves"
       if (iss >> token && token == "moves") {
         std::string move;
         while (iss >> move) {
-          // logCommand("Making move: " + move);
+          // logMessage("Making move: " + move);
           try {
             engine->makeMove(move);
-            // logCommand("Move " + move + " applied successfully");
+            // logMessage("Move " + move + " applied successfully");
           } catch (const std::exception &e) {
-            logError("Exception making move: " + move + " - " +
-                     std::string(e.what()));
+            logMessage("Exception making move: " + move + " - " + std::string(e.what()));
             break;
           } catch (...) {
-            logError("Unknown exception making move: " + move);
+            logMessage("Unknown exception making move: " + move);
             break;
           }
         }
       }
     } catch (const std::exception &e) {
-      logError("Exception in startpos handling: " + std::string(e.what()));
+      logMessage("Exception in startpos handling: " + std::string(e.what()));
     }
   } else if (token == "fen") {
     try {
@@ -174,42 +153,41 @@ void UCIAdapter::handlePosition(std::istringstream &iss) {
       }
 
       if (fen.empty()) {
-        logError("Empty FEN string received");
+        logMessage("Empty FEN string received");
         return;
       }
 
-      logCommand("Setting FEN: " + fen);
+      logMessage("Setting FEN: " + fen);
       engine->setPosition(fen);
 
       // Process any moves after the FEN
       if (iss >> token && token == "moves") {
         std::string move;
         while (iss >> move) {
-          logCommand("Making move after FEN: " + move);
+          logMessage("Making move after FEN: " + move);
           try {
             engine->makeMove(move);
-            logCommand("Move " + move + " applied successfully after FEN");
+            logMessage("Move " + move + " applied successfully after FEN");
           } catch (const std::exception &e) {
-            logError("Exception making move after FEN: " + move + " - " +
-                     std::string(e.what()));
+            logMessage("Exception making move after FEN: " + move + " - " + std::string(e.what()));
             break;
           } catch (...) {
-            logError("Unknown exception making move after FEN: " + move);
+            logMessage("Unknown exception making move after FEN: " + move);
             break;
           }
         }
       }
     } catch (const std::exception &e) {
-      logError("Exception in FEN handling: " + std::string(e.what()));
+      logMessage("Exception in FEN handling: " + std::string(e.what()));
     }
   } else {
-    logError("Unknown position command: " + token);
+    logMessage("Unknown position command: " + token);
   }
 }
 
 void UCIAdapter::handleGo(std::istringstream &iss) {
   if (!engine) {
-    logError("Engine is null in handleGo");
+    logMessage("Engine is null in handleGo");
     return;
   }
 
@@ -237,7 +215,6 @@ void UCIAdapter::handleGo(std::istringstream &iss) {
   engine->setSearchLimits(wtime, btime, winc, binc, movestogo, movetime);
 
   stopRequested = false; // Reset the stop flag
-  logCommand("Starting search");
 
   // Start a new search in a separate thread
   searchThread = std::thread([this]() {
@@ -246,10 +223,10 @@ void UCIAdapter::handleGo(std::istringstream &iss) {
 
       // FIXED: Use atomic check to prevent race condition
       if (!stopRequested.load()) {
-        logCommand("Search was stopped before completion");
+        logMessage("Search was stopped before completion");
       }
     } catch (const std::exception &e) {
-      logError("Exception in search thread: " + std::string(e.what()));
+      logMessage("Exception in search thread: " + std::string(e.what()));
       if (!stopRequested.load()) {
         std::cout << "bestmove (none)" << std::endl;
       }
@@ -264,7 +241,7 @@ void UCIAdapter::handleStop() {
       engine->stopSearch();
     }
     searchThread.join();
-    logCommand("Search stopped");
+    logMessage("Search stopped");
   }
 }
 
@@ -273,7 +250,7 @@ void UCIAdapter::handleSetOption(std::istringstream &iss) {
   iss >> token; // "name"
 
   if (token != "name") {
-    logError("Invalid setoption command format");
+    logMessage("Invalid setoption command format");
     return;
   }
 
@@ -293,7 +270,7 @@ void UCIAdapter::handleSetOption(std::istringstream &iss) {
     valueStr += token;
   }
 
-  logCommand("Setting option: " + nameStr + " = " + valueStr);
+  logMessage("Setting option: " + nameStr + " = " + valueStr);
 
   // Set the option in your engine
   // if (engine) {
