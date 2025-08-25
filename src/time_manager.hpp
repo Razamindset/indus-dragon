@@ -1,7 +1,11 @@
 #pragma once
 #include "chess.hpp"
 #include "constants.hpp"
-#include "utils.hpp"
+
+struct CalculatedTime {
+  long long soft_time;
+  long long hard_time;
+};
 
 class TimeManager {
 public:

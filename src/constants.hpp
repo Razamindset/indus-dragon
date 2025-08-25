@@ -16,13 +16,4 @@ constexpr size_t MAX_TT_ENTRIES = 1 << 21;
 constexpr int INCOMPLETE_SEARCH = INT_MIN;
 
 // MAX search depth
-constexpr int MAX_SEARCH_DEPTH = 12;
-
-// Material values
-constexpr int PAWN_VALUE = 100;
-constexpr int KNIGHT_VALUE = 300;
-constexpr int BISHOP_VALUE = 320;
-constexpr int ROOK_VALUE = 500;
-constexpr int QUEEN_VALUE = 900;
-
-// Time
+constexpr int MAX_SEARCH_DEPTH = 24;

@@ -1,8 +1,6 @@
 #include "search.hpp"
 #include "constants.hpp"
-#include "heuristics.hpp"
 #include "nnue/nnue.h"
-#include "utils.hpp"
 
 Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
                bool time_controls_enabled)
@@ -354,6 +352,14 @@ void Search::orderQuiescMoves(Movelist &moves) {
   moves.clear();
   for (const auto &[move, score] : scoredMoves) {
     moves.add(move);
+  }
+}
+
+// Heuristics
+void Search::clearKiller() {
+  for (int i = 0; i < MAX_SEARCH_DEPTH; ++i) {
+    killerMoves[i][0] = chess::Move::NULL_MOVE;
+    killerMoves[i][1] = chess::Move::NULL_MOVE;
   }
 }
 

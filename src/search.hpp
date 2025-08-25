@@ -25,6 +25,10 @@ private:
   std::atomic<bool> stopSearchFlag{false};
   long long positionsSearched = 0;
 
+  // Heuristics
+  chess::Move killerMoves[MAX_SEARCH_DEPTH][2];
+  void clearKiller();
+
   // Time management
   bool time_controls_enabled;
   long long soft_time_limit = 0;
