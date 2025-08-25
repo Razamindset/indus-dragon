@@ -15,41 +15,65 @@ class Search {
  public:
   Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
          bool time_controls_enabled);
+
   void searchBestMove();
+
   void stopSearch() { stopSearchFlag = true; }
+
   void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
+
   void logMessage(const std::string &message);
+
   void toggleLogs() { storeLogs = !storeLogs; }
 
  private:
   Board &board;
+
   TimeManager &time_manager;
+
   TranspositionTable &tt_helper;
+
   std::atomic<bool> stopSearchFlag{false};
+
   long long positionsSearched = 0;
 
   // Heuristics
   chess::Move killerMoves[MAX_SEARCH_DEPTH][2];
+
   void clearKiller();
 
   // Time management
   bool time_controls_enabled;
+
   long long soft_time_limit = 0;
+
   long long hard_time_limit = 0;
+
   int best_move_changes = 0;
+
   Move last_iteration_best_move = Move::NULL_MOVE;
+
   std::chrono::steady_clock::time_point search_start_time;
 
   int negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply);
+
   int quiescenceSearch(int alpha, int beta, int ply);
+
   void orderMoves(Movelist &moves, Move tt_move, int ply);
+
   void orderQuiescMoves(Movelist &moves);
+
   int evaluate(int ply);
+
   bool isGameOver(const chess::Board &board);
+
   GameResultReason getGameOverReason(const chess::Board &board);
+
   int getPieceValue(Piece piece);
+
   void printInfoLine(int eval, std::vector<Move> pv, int currentDepth,
                      long long nps, long long elapsed_time);
+
   bool manageTime(long long elapsed_time);
   bool checkHardTimeLimit();
   bool storeLogs = false;

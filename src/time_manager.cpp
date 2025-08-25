@@ -158,7 +158,7 @@ double TimeManager::getEvaluationFactor(const chess::Board &board) {
 }
 
 void TimeManager::setTimevalues(int wtime, int btime, int winc, int binc,
-                                int movestogo, int movetime, bool is_infinite) {
+                                int movestogo, int movetime) {
   this->wtime = static_cast<long long>(wtime);
   this->btime = static_cast<long long>(btime);
   this->winc = static_cast<long long>(winc);

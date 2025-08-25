@@ -17,8 +17,7 @@ void Engine::initilizeEngine() {
 void Engine::setSearchLimits(int wtime, int btime, int winc, int binc,
                              int movestogo, int movetime) {
   bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
-  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime,
-                             false);
+  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
   search.setTimeControlsEnabled(time_controls_enabled);
 }
 
@@ -34,6 +33,94 @@ void Engine::handle_stop() {
     stopSearch();
 
     searchThread.join();
+  }
+}
+
+void Engine::handle_go(std::istringstream &iss) {
+  handle_stop();
+
+  int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
+
+  std::string token;
+
+  while (iss >> token) {
+    if (token == "infinite") {
+      break;
+
+    } else if (token == "wtime") {
+      iss >> wtime;
+
+    } else if (token == "btime") {
+      iss >> btime;
+
+    } else if (token == "winc") {
+      iss >> winc;
+
+    } else if (token == "binc") {
+      iss >> binc;
+
+    } else if (token == "movestogo") {
+      iss >> movestogo;
+
+    } else if (token == "movetime") {
+      iss >> movetime;
+    }
+  }
+
+  bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
+
+  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
+
+  search.setTimeControlsEnabled(time_controls_enabled);
+
+  stopRequested = false;  // Reset the stop flag
+
+  searchThread = std::thread([this]() {
+    try {
+      search.searchBestMove();
+
+    } catch (const std::exception &e) {
+      std::cout << "Exception in search thread \n";
+    }
+  });
+}
+
+void Engine::handle_positon(std::istringstream &iss) {
+  std::string token;
+  iss >> token;
+
+  if (token == "startpos") {
+    setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    // Process any moves that come after "startpos moves"
+    if (iss >> token && token == "moves") {
+      std::string move;
+      while (iss >> move) {
+        makeMove(move);
+      }
+    }
+
+  } else if (token == "fen") {
+    std::string fen;
+    std::string fenPart;
+
+    // FIXED: Properly collect FEN string parts
+    // FEN has 6 parts: board, side, castling, en passant, halfmove,
+    // fullmove
+    for (int i = 0; i < 6 && iss >> fenPart; i++) {
+      if (!fen.empty()) fen += " ";
+      fen += fenPart;
+    }
+
+    setPosition(fen);
+
+    // Process any moves after the FEN
+    if (iss >> token && token == "moves") {
+      std::string move;
+      while (iss >> move) {
+        makeMove(move);
+      }
+    }
   }
 }
 
@@ -66,42 +153,7 @@ void Engine::uci_loop() {
       fflush(stdout);
 
     } else if (token == "position") {
-      std::string token;
-      iss >> token;
-
-      if (token == "startpos") {
-        setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-        // Process any moves that come after "startpos moves"
-        if (iss >> token && token == "moves") {
-          std::string move;
-          while (iss >> move) {
-            makeMove(move);
-          }
-        }
-
-      } else if (token == "fen") {
-        std::string fen;
-        std::string fenPart;
-
-        // FIXED: Properly collect FEN string parts
-        // FEN has 6 parts: board, side, castling, en passant, halfmove,
-        // fullmove
-        for (int i = 0; i < 6 && iss >> fenPart; i++) {
-          if (!fen.empty()) fen += " ";
-          fen += fenPart;
-        }
-
-        setPosition(fen);
-
-        // Process any moves after the FEN
-        if (iss >> token && token == "moves") {
-          std::string move;
-          while (iss >> move) {
-            makeMove(move);
-          }
-        }
-      }
+      handle_positon(iss);
     } else if (token == "d") {
       printBoard();
     } else if (token == "quit") {
@@ -115,42 +167,7 @@ void Engine::uci_loop() {
     } else if (token == "togglelogs") {
       search.toggleLogs();
     } else if (token == "go") {
-      handle_stop();
-      int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
-      std::string token;
-      while (iss >> token) {
-        if (token == "wtime") {
-          iss >> wtime;
-        } else if (token == "btime") {
-          iss >> btime;
-        } else if (token == "winc") {
-          iss >> winc;
-        } else if (token == "binc") {
-          iss >> binc;
-        } else if (token == "movestogo") {
-          iss >> movestogo;
-        } else if (token == "movetime") {
-          iss >> movetime;
-        }
-      }
-
-      bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
-
-      time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime,
-                                 false);
-
-      search.setTimeControlsEnabled(time_controls_enabled);
-
-      stopRequested = false;  // Reset the stop flag
-
-      searchThread = std::thread([this]() {
-        try {
-          search.searchBestMove();
-
-        } catch (const std::exception &e) {
-          std::cout << "Exception in search thread \n";
-        }
-      });
+      handle_go(iss);
     }
   }
 }

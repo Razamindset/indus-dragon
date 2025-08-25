@@ -29,6 +29,10 @@ class Engine {
 
   void handle_stop();
 
+  void handle_go(std::istringstream &iss);
+
+  void handle_positon(std::istringstream &iss);
+
  private:
   chess::Board board;
   TranspositionTable tt_helper;

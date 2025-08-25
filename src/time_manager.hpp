@@ -10,7 +10,7 @@ struct CalculatedTime {
 class TimeManager {
  public:
   void setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
-                     int movetime, bool is_infinite);
+                     int movetime);
   CalculatedTime calculateSearchTime(chess::Board &board);
 
  private:

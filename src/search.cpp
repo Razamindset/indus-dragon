@@ -129,19 +129,20 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
     return 0;
   }
 
+  // Draw by fifty moves rule
+  if (board.isHalfMoveDraw() &&
+      board.getHalfMoveDrawType().second == GameResult::DRAW) {
+    return 0;
+  }
+
   uint64_t boardhash = board.hash();
   int ttScore = 0;
   Move ttMove = Move::NULL_MOVE;
-  TTEntryType entry_type;
   int originalAlpha = alpha;
 
   // See if a score exists in tt.
-  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply,
-                        entry_type) &&
+  if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply) &&
       ply > 0) {
-    if (ttMove != Move::NULL_MOVE) {
-      pv.push_back(ttMove);
-    }
     return ttScore;
   }
 
