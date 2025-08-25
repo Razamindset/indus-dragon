@@ -1,9 +1,8 @@
 #include "search.hpp"
 #include "constants.hpp"
 #include "nnue/nnue.h"
-#include "uci.hpp"
+#include <fstream>
 #include <iostream>
-#include <sstream>
 
 Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
                bool time_controls_enabled)
@@ -87,6 +86,7 @@ void Search::searchBestMove() {
     } else {
       const std::string bestmove_str = "bestmove (none)";
       std::cout << bestmove_str << std::endl;
+
       logMessage(bestmove_str);
       return;
     }
@@ -441,7 +441,7 @@ void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int current
                            long long nps, long long elapsed_time) {
   std::stringstream info_ss;
   info_ss << "info depth " << currentDepth << " nodes " << positionsSearched << " time "
-            << elapsed_time << " nps " << nps << " score ";
+          << elapsed_time << " nps " << nps << " score ";
 
   if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
     int movesToMate;
@@ -462,4 +462,19 @@ void Search::printInfoLine(int bestEval, std::vector<Move> bestLine, int current
   std::string info_str = info_ss.str();
   std::cout << info_str << std::endl;
   logMessage(info_str);
+}
+
+void Search::logMessage(const std::string &message) {
+  if (!storeLogs)
+    return;
+
+  try {
+    std::ofstream logFile("uci_log.txt", std::ios_base::app);
+    if (logFile.is_open()) {
+      logFile << message << std::endl;
+      logFile.close();
+    }
+  } catch (...) {
+    // Silently ignore logging errors to prevent crashes
+  }
 }

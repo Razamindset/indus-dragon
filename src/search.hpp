@@ -17,6 +17,8 @@ public:
   void searchBestMove();
   void stopSearch() { stopSearchFlag = true; }
   void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
+  void logMessage(const std::string &message);
+  void toggleLogs() { storeLogs = !storeLogs; }
 
 private:
   Board &board;
@@ -49,4 +51,5 @@ private:
                      long long elapsed_time);
   bool manageTime(long long elapsed_time);
   bool checkHardTimeLimit();
+  bool storeLogs = false;
 };

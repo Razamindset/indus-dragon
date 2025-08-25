@@ -7,6 +7,8 @@
 #include "search.hpp"
 #include "time_manager.hpp"
 #include "tt.hpp"
+#include <atomic>
+#include <thread>
 
 class Engine {
 public:
@@ -22,9 +24,16 @@ public:
 
   void stopSearch();
 
+  void uci_loop();
+
+  void handle_stop();
+
 private:
   chess::Board board;
   TranspositionTable tt_helper;
   TimeManager time_manager;
   Search search;
+
+  std::thread searchThread;
+  std::atomic<bool> stopRequested;
 };
