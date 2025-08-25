@@ -71,4 +71,6 @@ Indus Dragon uses:
 - [chess-library](https://github.com/Disservin/chess-library) for board representation
 - Techniques and algorithms from [Chess Programming Wiki](https://www.chessprogramming.org)
 
+Special Thanks to [tissatussa](https://github.com/tissatussa) For testing, support and suggestions.
+
 Stay tuned for updates!
