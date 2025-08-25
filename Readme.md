@@ -72,4 +72,6 @@ Indus Dragon uses:
 - Techniques and algorithms from [Chess Programming Wiki](https://www.chessprogramming.org)
 - NNUE probing Library from [dshawul](https://github.com/dshawul) [Library](https://github.com/dshawul/nnue-probe)
 
+Special Thanks to [tissatussa](https://github.com/tissatussa) For testing, support and suggestions.
+
 Stay tuned for updates!
