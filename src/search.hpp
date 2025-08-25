@@ -1,7 +1,6 @@
 #pragma once
 
 #include "chess.hpp"
-#include "evaluation.hpp"
 #include "time_manager.hpp"
 #include "tt.hpp"
 #include <atomic>
@@ -14,7 +13,7 @@ using namespace chess;
 class Search {
 public:
   Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
-         Evaluation &evaluator, bool time_controls_enabled);
+         bool time_controls_enabled);
   void searchBestMove();
   void stopSearch() { stopSearchFlag = true; }
   void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
@@ -23,7 +22,6 @@ private:
   Board &board;
   TimeManager &time_manager;
   TranspositionTable &tt_helper;
-  Evaluation &evaluator;
   std::atomic<bool> stopSearchFlag{false};
   long long positionsSearched = 0;
 

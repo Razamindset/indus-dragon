@@ -1,12 +1,12 @@
 #include "search.hpp"
 #include "constants.hpp"
-#include "evaluation.hpp"
 #include "heuristics.hpp"
+#include "nnue/nnue.h"
 #include "utils.hpp"
 
 Search::Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
-               Evaluation &evaluator, bool time_controls_enabled)
-    : board(board), time_manager(time_manager), tt_helper(tt_helper), evaluator(evaluator),
+               bool time_controls_enabled)
+    : board(board), time_manager(time_manager), tt_helper(tt_helper),
       time_controls_enabled(time_controls_enabled) {}
 
 void Search::searchBestMove() {
@@ -381,7 +381,7 @@ int Search::evaluate(int ply) {
     }
     return DRAW_SCORE;
   }
-  return evaluator.evaluate(board);
+  return nnue_evaluate_fen(board.getFen().c_str());
 }
 
 bool Search::isGameOver(const chess::Board &board) {

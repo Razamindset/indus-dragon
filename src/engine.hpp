@@ -4,7 +4,6 @@
 
 #include "chess.hpp"
 #include "constants.hpp"
-#include "evaluation.hpp"
 #include "search.hpp"
 #include "time_manager.hpp"
 #include "tt.hpp"
@@ -17,8 +16,7 @@ public:
   void setPosition(const std::string &fen);
   void printBoard();
   void initilizeEngine();
-  void setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo,
-                     int movetime);
+  void setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo, int movetime);
 
   void makeMove(std::string move);
 
@@ -28,7 +26,6 @@ public:
 
 private:
   Board board;
-  Evaluation evaluator;
   TranspositionTable tt_helper;
   TimeManager time_manager;
   Search search;

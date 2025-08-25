@@ -1,4 +1,5 @@
 #include "time_manager.hpp"
+#include "nnue/nnue.h"
 
 CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
   CalculatedTime values;
@@ -119,8 +120,8 @@ double TimeManager::getPositionFactor(const chess::Board &board) {
 
 // Adjust time based on evaluation score
 double TimeManager::getEvaluationFactor(const chess::Board &board) {
-  Evaluation evaluator;
-  int eval_score = evaluator.evaluate(board);
+
+  int eval_score = nnue_evaluate_fen(board.getFen().c_str());
 
   // Convert to our side's perspective
   if (board.sideToMove() == chess::Color::BLACK) {

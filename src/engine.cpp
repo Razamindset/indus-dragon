@@ -1,8 +1,7 @@
 #include "engine.hpp"
 
 Engine::Engine()
-    : board(), evaluator(), tt_helper(), time_manager(),
-      search(board, time_manager, tt_helper, evaluator, false) {}
+    : board(), tt_helper(), time_manager(), search(board, time_manager, tt_helper, false) {}
 
 void Engine::printBoard() { std::cout << board; }
 
