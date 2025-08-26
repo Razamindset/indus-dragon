@@ -1,4 +1,5 @@
 #include "tt.hpp"
+
 #include "constants.hpp"
 
 TranspositionTable::TranspositionTable() : transpositionTable(MAX_TT_ENTRIES) {}
@@ -10,8 +11,9 @@ void TranspositionTable::printTTStats() const {
   std::cout << "  TT Size       : " << MAX_TT_ENTRIES << "\n";
 }
 
-bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score, int alpha, int beta,
-                                 chess::Move &bestMove, int ply, TTEntryType &entry_type) {
+bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score,
+                                 int alpha, int beta, chess::Move &bestMove,
+                                 int ply) {
   const int index = hash & (MAX_TT_ENTRIES - 1);
   const TTEntry &entry = transpositionTable[index];
 
@@ -21,12 +23,11 @@ bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score, int alpha
 
   ttHits++;
   bestMove = entry.bestMove;
-  entry_type = entry.type;
 
   if (entry.depth >= depth) {
     int tt_score = entry.score;
     if (std::abs(tt_score) >= MATE_SCORE - MATE_THRESHHOLD) {
-      tt_score += (tt_score > 0 ? -ply : ply); // Adjust for current ply
+      tt_score += (tt_score > 0 ? -ply : ply);  // Adjust for current ply
     }
 
     if (entry.type == TTEntryType::EXACT) {
@@ -46,14 +47,14 @@ bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score, int alpha
   return false;
 }
 
-void TranspositionTable::storeTT(uint64_t hash, int depth, int score, TTEntryType type,
-                                 chess::Move bestMove, int ply) {
-  int adjustedScore = score;
+void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
+                                 TTEntryType type, chess::Move bestMove,
+                                 int ply) {
   if (std::abs(score) >= MATE_SCORE - MATE_THRESHHOLD) {
-    adjustedScore += (score > 0 ? ply : -ply); // Adjust to ply 0
+    score += (score > 0 ? ply : -ply);  // Adjust to ply 0
   }
 
   const int index = hash & (MAX_TT_ENTRIES - 1);
-  transpositionTable[index] = {hash, adjustedScore, depth, type, bestMove};
+  transpositionTable[index] = {hash, score, depth, type, bestMove};
   ttStores++;
 }

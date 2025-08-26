@@ -1,24 +1,22 @@
 #pragma once
 
+#include <atomic>
 #include <string>
+#include <thread>
 
 #include "chess.hpp"
 #include "constants.hpp"
-#include "evaluation.hpp"
 #include "search.hpp"
-#include "time_manager.hpp"
 #include "tt.hpp"
 
-using namespace chess;
-
 class Engine {
-public:
+ public:
   Engine();
   void setPosition(const std::string &fen);
+
   void printBoard();
+
   void initilizeEngine();
-  void setSearchLimits(int wtime, int btime, int winc, int binc, int movestogo,
-                     int movetime);
 
   void makeMove(std::string move);
 
@@ -26,10 +24,19 @@ public:
 
   void stopSearch();
 
-private:
-  Board board;
-  Evaluation evaluator;
+  void uci_loop();
+
+  void handle_stop();
+
+  void handle_go(std::istringstream &iss);
+
+  void handle_positon(std::istringstream &iss);
+
+ private:
+  chess::Board board;
   TranspositionTable tt_helper;
-  TimeManager time_manager;
   Search search;
+
+  std::thread searchThread;
+  std::atomic<bool> stopRequested;
 };

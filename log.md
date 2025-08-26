@@ -15,9 +15,15 @@ After repeated testing seems like there is some issue that needs to be solved be
 
 On 19 july 2025 I reafctored the entire codebase, separating the different parts into their own classes so in future it is easy to handle. But there is still a lot of work.
 
-It seems like there was malicious code in the write storeTT function that was causing severe issues when in end game and table is full so for now I am using simply a vector for this purpose lets see how it behaves. Honestly I didnot write that code my implementation was simple. I was testing gemini cli earlier with this project that might have put that code here.
+It seems like there was malicious code in the write storeTT function that was causing severe issues when in end game and table is full so for now I am using simply a vector for this purpose lets see how it behaves. Honestly I didnot write that code, my implementation was simple. I was testing gemini cli earlier with this project, that might have put that code here.
 After 2 3 games looks like the bug is gone also note that for the current approach to work the size of tt must be a power of 2 for bitwise operations to work when storing and searching. I will write more about this when i feel this approach works for us.
 
 ## Refactor Use negamax
 
 The negamax works similar to min max but the code is shorte. We take each player as maximizing and switch the alpha and beta values on each call. Also we add perspective to the evaluation value. As the search resolves we get the same result as min max but with less code. Date: 21 july 2025.
+
+## Add NNUE based evalauation
+
+Have added a nnue file that will be used for board evaluation instead of a handcrafted function.
+For using the nnue I am using the probe nnue library that gives bataries to load and evaluate positions. https://github.com/dshawul/nnue-probe. The library currently only supports a specific 20MB nnue. In future i plan to expand it so i can load multi nnues or different networks.
+The nnue file is from some old stockfish version. I am actively working on training custom networks for indus dragon but it will take quite some time to get right cause turns out its not very straight forward. There are many constraints at hand like data, training resources, Until then I will focus more on refactoring the code and improving the search.
