@@ -1,23 +1,12 @@
 #include "engine.hpp"
 
-Engine::Engine()
-    : board(),
-      tt_helper(),
-      time_manager(),
-      search(board, time_manager, tt_helper, false) {}
+Engine::Engine() : board(), tt_helper(), search(board, tt_helper) {}
 
 void Engine::printBoard() { std::cout << board; }
 
 void Engine::setPosition(const std::string &fen) { board.setFen(fen); }
 
 void Engine::initilizeEngine() { board = chess::Board(); }
-
-void Engine::setSearchLimits(int wtime, int btime, int winc, int binc,
-                             int movestogo, int movetime) {
-  bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
-  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
-  search.setTimeControlsEnabled(time_controls_enabled);
-}
 
 void Engine::makeMove(std::string move) {
   Move parsedMove = uci::uciToMove(board, move);
@@ -65,11 +54,11 @@ void Engine::handle_go(std::istringstream &iss) {
     }
   }
 
-  bool time_controls_enabled = (wtime > 0 || btime > 0 || movetime > 0);
+  bool is_time_enabled = (wtime > 0 || btime > 0 || movetime > 0);
 
-  time_manager.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
+  search.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
 
-  search.setTimeControlsEnabled(time_controls_enabled);
+  search.setTimeControlsEnabled(is_time_enabled);
 
   stopRequested = false;  // Reset the stop flag
 

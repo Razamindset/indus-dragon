@@ -1,10 +1,22 @@
-#include "time_manager.hpp"
-
 #include <algorithm>
 
 #include "nnue/nnue.h"
+#include "search.hpp"
 
-CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
+int Search::count_pieces(const chess::Board &board) {
+  return board.pieces(chess::PieceType::PAWN, chess::Color::WHITE).count() +
+         board.pieces(chess::PieceType::PAWN, chess::Color::BLACK).count() +
+         board.pieces(chess::PieceType::KNIGHT, chess::Color::WHITE).count() +
+         board.pieces(chess::PieceType::KNIGHT, chess::Color::BLACK).count() +
+         board.pieces(chess::PieceType::BISHOP, chess::Color::WHITE).count() +
+         board.pieces(chess::PieceType::BISHOP, chess::Color::BLACK).count() +
+         board.pieces(chess::PieceType::ROOK, chess::Color::WHITE).count() +
+         board.pieces(chess::PieceType::ROOK, chess::Color::BLACK).count() +
+         board.pieces(chess::PieceType::QUEEN, chess::Color::WHITE).count() +
+         board.pieces(chess::PieceType::QUEEN, chess::Color::BLACK).count();
+}
+
+CalculatedTime Search::calculateSearchTime(chess::Board &board) {
   CalculatedTime values;
 
   // Infinte Case
@@ -72,7 +84,7 @@ CalculatedTime TimeManager::calculateSearchTime(chess::Board &board) {
 }
 
 // Estimate moves remaining based on game phase
-int TimeManager::estimateMovesToGo(const chess::Board &board) {
+int Search::estimateMovesToGo(const chess::Board &board) {
   int piece_count = count_pieces(board);
 
   int full_moves = board.fullMoveNumber();
@@ -92,7 +104,7 @@ int TimeManager::estimateMovesToGo(const chess::Board &board) {
 }
 
 // Adjust time based on position characteristics
-double TimeManager::getPositionFactor(const chess::Board &board) {
+double Search::getPositionFactor(const chess::Board &board) {
   double factor = 1.0;
 
   // Spend more time in complex positions
@@ -123,7 +135,7 @@ double TimeManager::getPositionFactor(const chess::Board &board) {
 }
 
 // Adjust time based on evaluation score
-double TimeManager::getEvaluationFactor(const chess::Board &board) {
+double Search::getEvaluationFactor(const chess::Board &board) {
   int eval_score = nnue_evaluate_fen(board.getFen().c_str());
 
   // Convert to our side's perspective
@@ -157,12 +169,42 @@ double TimeManager::getEvaluationFactor(const chess::Board &board) {
   return std::max(0.6, std::min(1.8, factor));  // Clamp between 0.6x and 1.8x
 }
 
-void TimeManager::setTimevalues(int wtime, int btime, int winc, int binc,
-                                int movestogo, int movetime) {
+void Search::setTimevalues(int wtime, int btime, int winc, int binc,
+                           int movestogo, int movetime) {
   this->wtime = static_cast<long long>(wtime);
   this->btime = static_cast<long long>(btime);
   this->winc = static_cast<long long>(winc);
   this->binc = static_cast<long long>(binc);
   this->movestogo = static_cast<long long>(movestogo);
   this->movetime = static_cast<long long>(movetime);
+}
+
+bool Search::manageTime(long long elapsed_time) {
+  if (!time_controls_enabled) {
+    return false;  // Don't stop if time controls are off
+  }
+
+  if (elapsed_time >= soft_time_limit) {
+    if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
+      soft_time_limit += soft_time_limit * 0.3;
+      best_move_changes = 0;
+      return false;  // Continue searching
+    }
+    return true;  // Stop searching
+  }
+  return false;  // Don't stop yet
+}
+
+bool Search::checkHardTimeLimit() {
+  if (time_controls_enabled) {
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            current_time - search_start_time)
+                            .count();
+    if (elapsed_time >= hard_time_limit) {
+      stopSearchFlag = true;
+      return true;
+    }
+  }
+  return false;
 }

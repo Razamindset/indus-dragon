@@ -6,15 +6,19 @@
 #include <vector>
 
 #include "chess.hpp"
-#include "time_manager.hpp"
+#include "constants.hpp"
 #include "tt.hpp"
 
 using namespace chess;
 
+struct CalculatedTime {
+  long long soft_time;
+  long long hard_time;
+};
+
 class Search {
  public:
-  Search(Board &board, TimeManager &time_manager, TranspositionTable &tt_helper,
-         bool time_controls_enabled);
+  Search(Board &board, TranspositionTable &tt_helper);
 
   void searchBestMove();
 
@@ -22,14 +26,15 @@ class Search {
 
   void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
 
+  void setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
+                     int movetime);
+
   void logMessage(const std::string &message);
 
   void toggleLogs() { storeLogs = !storeLogs; }
 
  private:
   Board &board;
-
-  TimeManager &time_manager;
 
   TranspositionTable &tt_helper;
 
@@ -42,19 +47,7 @@ class Search {
 
   void clearKiller();
 
-  // Time management
-  bool time_controls_enabled;
-
-  long long soft_time_limit = 0;
-
-  long long hard_time_limit = 0;
-
-  int best_move_changes = 0;
-
-  Move last_iteration_best_move = Move::NULL_MOVE;
-
-  std::chrono::steady_clock::time_point search_start_time;
-
+  // Search
   int negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply);
 
   int quiescenceSearch(int alpha, int beta, int ply);
@@ -74,7 +67,51 @@ class Search {
   void printInfoLine(int eval, std::vector<Move> pv, int currentDepth,
                      long long nps, long long elapsed_time);
 
-  bool manageTime(long long elapsed_time);
-  bool checkHardTimeLimit();
   bool storeLogs = false;
+
+  // Time management
+  bool time_controls_enabled = false;
+
+  long long soft_time_limit = 0;
+
+  long long hard_time_limit = 0;
+
+  int best_move_changes = 0;
+
+  Move last_iteration_best_move = Move::NULL_MOVE;
+
+  std::chrono::steady_clock::time_point search_start_time;
+
+  bool manageTime(long long elapsed_time);
+
+  bool checkHardTimeLimit();
+
+  CalculatedTime calculateSearchTime(chess::Board &board);
+
+  int estimateMovesToGo(const chess::Board &board);
+
+  double getPositionFactor(const chess::Board &board);
+
+  double getEvaluationFactor(const chess::Board &board);
+
+  int count_pieces(const chess::Board &board);
+
+  long long wtime = 0;
+  long long btime = 0;
+  long long winc = 0;
+  long long binc = 0;
+  long long movestogo = 0;
+  long long movetime = 0;
+  bool is_infinte = false;
+
+  static constexpr long long INFINITE_TIME = 1000000000LL;  // 1 billion ms
+  static constexpr double SOFT_TIME_FACTOR =
+      0.4;  // Use 40% of allocated time normally
+  static constexpr double HARD_TIME_FACTOR = 2.5;  // Maximum 2.5x soft time
+  static constexpr double PANIC_THRESHOLD =
+      0.1;  // Panic mode when <10% time left
+  static constexpr double ENDGAME_FACTOR = 1.2;   // Spend more time in endgame
+  static constexpr double IN_CHECK_FACTOR = 1.2;  // Spend more time in endgame
+  static constexpr long long MIN_SEARCH_TIME = 10;  // Minimum 10ms search
+  static constexpr long long SAFETY_BUFFER = 50;    // Keep 50ms safety buffer
 };

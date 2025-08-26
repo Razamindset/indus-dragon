@@ -6,12 +6,8 @@
 #include "constants.hpp"
 #include "nnue/nnue.h"
 
-Search::Search(Board &board, TimeManager &time_manager,
-               TranspositionTable &tt_helper, bool time_controls_enabled)
-    : board(board),
-      time_manager(time_manager),
-      tt_helper(tt_helper),
-      time_controls_enabled(time_controls_enabled) {}
+Search::Search(Board &board, TranspositionTable &tt_helper)
+    : board(board), tt_helper(tt_helper) {}
 
 void Search::searchBestMove() {
   stopSearchFlag = false;
@@ -21,7 +17,7 @@ void Search::searchBestMove() {
   int maxDepth = MAX_SEARCH_DEPTH;
 
   if (time_controls_enabled) {
-    CalculatedTime times = time_manager.calculateSearchTime(board);
+    CalculatedTime times = calculateSearchTime(board);
     soft_time_limit = times.soft_time;
     hard_time_limit = times.hard_time;
   } else {
@@ -413,36 +409,6 @@ bool Search::isGameOver(const chess::Board &board) {
 GameResultReason Search::getGameOverReason(const chess::Board &board) {
   auto result = board.isGameOver();
   return result.first;
-}
-
-bool Search::manageTime(long long elapsed_time) {
-  if (!time_controls_enabled) {
-    return false;  // Don't stop if time controls are off
-  }
-
-  if (elapsed_time >= soft_time_limit) {
-    if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
-      soft_time_limit += soft_time_limit * 0.3;
-      best_move_changes = 0;
-      return false;  // Continue searching
-    }
-    return true;  // Stop searching
-  }
-  return false;  // Don't stop yet
-}
-
-bool Search::checkHardTimeLimit() {
-  if (time_controls_enabled) {
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - search_start_time)
-                            .count();
-    if (elapsed_time >= hard_time_limit) {
-      stopSearchFlag = true;
-      return true;
-    }
-  }
-  return false;
 }
 
 void Search::printInfoLine(int bestEval, std::vector<Move> bestLine,
