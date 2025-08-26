@@ -11,12 +11,16 @@ class TimeManager {
  public:
   void setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
                      int movetime);
+
   CalculatedTime calculateSearchTime(chess::Board &board);
 
  private:
   int estimateMovesToGo(const chess::Board &board);
+
   double getPositionFactor(const chess::Board &board);
+
   double getEvaluationFactor(const chess::Board &board);
+
   int count_pieces(const chess::Board &board) {
     return board.pieces(chess::PieceType::PAWN, chess::Color::WHITE).count() +
            board.pieces(chess::PieceType::PAWN, chess::Color::BLACK).count() +

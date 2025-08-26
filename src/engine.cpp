@@ -10,9 +10,7 @@ void Engine::printBoard() { std::cout << board; }
 
 void Engine::setPosition(const std::string &fen) { board.setFen(fen); }
 
-void Engine::initilizeEngine() {
-  board.setFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-}
+void Engine::initilizeEngine() { board = chess::Board(); }
 
 void Engine::setSearchLimits(int wtime, int btime, int winc, int binc,
                              int movestogo, int movetime) {
@@ -90,7 +88,7 @@ void Engine::handle_positon(std::istringstream &iss) {
   iss >> token;
 
   if (token == "startpos") {
-    setPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    initilizeEngine();
 
     // Process any moves that come after "startpos moves"
     if (iss >> token && token == "moves") {
@@ -128,10 +126,12 @@ void Engine::uci_loop() {
   std::cout << "Extended Commands for debugging\n";
   std::cout << "'d' - print the current board\n";
   std::cout << "'togglelogs' - Write the engine logs to a log file for debug\n";
+  std::cout << "'ttstats' - Print TTHits and Stores\n";
 
   std::string cmd;
 
   while (std::getline(std::cin, cmd)) {
+    search.logMessage(cmd);
     std::istringstream iss(cmd);
     std::string token;
     iss >> token;
@@ -164,8 +164,11 @@ void Engine::uci_loop() {
     } else if (token == "ucinewgame") {
       handle_stop();  // Stop any ongoing search before reinitializing
       initilizeEngine();
+      tt_helper.clear_table();
     } else if (token == "togglelogs") {
       search.toggleLogs();
+    } else if (token == "ttstats") {
+      tt_helper.printTTStats();
     } else if (token == "go") {
       handle_go(iss);
     }
