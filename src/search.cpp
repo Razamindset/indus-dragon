@@ -14,36 +14,30 @@ void Search::searchBestMove() {
   if (isGameOver(board)) {
     return;
   }
-  int maxDepth = MAX_SEARCH_DEPTH;
 
-  if (time_controls_enabled) {
-    CalculatedTime times = calculateSearchTime(board);
-    soft_time_limit = times.soft_time;
-    hard_time_limit = times.hard_time;
-  } else {
-    soft_time_limit = 1000000000LL;
-    hard_time_limit = 1000000000LL;
-  }
+  CalculatedTime times = calculateSearchTime(board);
+  soft_time_limit = times.soft_time;
+  hard_time_limit = times.hard_time;
 
   search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
   best_move_changes = 0;
-  last_iteration_best_move = Move::NULL_MOVE;
+  Move last_iteration_best_move = Move::NULL_MOVE;
   clearKiller();
 
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
 
   // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= maxDepth; ++currentDepth) {
+  for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
     std::vector<Move> currentBestLine;
 
     int bestEval =
         negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
 
     // If the hard time limit was hit, stop searching immediately.
-    if (stopSearchFlag && currentDepth > 1) {
+    if (stopSearchFlag) {
       break;
     }
 
@@ -65,8 +59,8 @@ void Search::searchBestMove() {
 
     long long nps = 0;
 
+    // Calculate nodes per second as (nodes / milliseconds) * 1000
     if (elapsed_time > 0) {
-      // Calculate nodes per second as (nodes / milliseconds) * 1000
       nps = (positionsSearched * 1000) / elapsed_time;
     }
 
@@ -82,15 +76,7 @@ void Search::searchBestMove() {
   if (bestMove == Move::NULL_MOVE) {
     Movelist moves;
     movegen::legalmoves(moves, board);
-    if (!moves.empty()) {
-      bestMove = moves[0];
-    } else {
-      const std::string bestmove_str = "bestmove (none)";
-      std::cout << bestmove_str << std::endl;
-
-      logMessage(bestmove_str);
-      return;
-    }
+    bestMove = moves[0];
   }
 
   const std::string bestmove_str = "bestmove " + uci::moveToUci(bestMove);
@@ -229,16 +215,6 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
       Piece victim = board.at(move.to());
       score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
-
-    // ! Expensive For normal search But donot skip in qsearch
-    // Prioritize checks - FIX: Only if not a capture (to avoid double bonus)
-    // if (!board.isCapture(move)) {
-    //   board.makeMove(move);
-    //   if (board.inCheck()) {
-    //     score += 1000; // High bonus for giving check
-    //   }
-    //   board.unmakeMove(move);
-    // }
 
     // Prioritize promotions
     if (move.promotionType() == QUEEN)

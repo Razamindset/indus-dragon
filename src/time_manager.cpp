@@ -20,7 +20,7 @@ CalculatedTime Search::calculateSearchTime(chess::Board &board) {
   CalculatedTime values;
 
   // Infinte Case
-  if ((wtime <= 0 && btime <= 0 && movetime <= 0) || is_infinte) {
+  if (wtime <= 0 && btime <= 0 && movetime <= 0) {
     values.soft_time = INFINITE_TIME;
     values.hard_time = INFINITE_TIME;
     return values;
