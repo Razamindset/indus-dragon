@@ -52,9 +52,7 @@ class Search {
 
   int quiescenceSearch(int alpha, int beta, int ply);
 
-  void orderMoves(Movelist &moves, Move tt_move, int ply);
-
-  void orderQuiescMoves(Movelist &moves);
+  void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
 
   int evaluate(int ply);
 

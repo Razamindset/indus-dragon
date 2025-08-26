@@ -140,7 +140,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
     }
   }
 
-  orderMoves(moves, ttMove, ply);
+  orderMoves(moves, ttMove, ply, false);
 
   Move bestMove = Move::NULL_MOVE;
   int bestScore = -MATE_SCORE;
@@ -190,58 +190,74 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
 }
 
 /* Order moves based on their priority */
-void Search::orderMoves(Movelist &moves, Move ttMove, int ply) {
+void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
+                        bool isQuiescence) {
   std::vector<std::pair<Move, int>> scoredMoves;
   scoredMoves.reserve(moves.size());
 
-  // Get the killer moves
-  Move killer1 = killerMoves[ply][0];
-  Move killer2 = killerMoves[ply][1];
+  // Get the killer moves for the main search
+  const Move killer1 = isQuiescence ? Move::NULL_MOVE : killerMoves[ply][0];
+  const Move killer2 = isQuiescence ? Move::NULL_MOVE : killerMoves[ply][1];
 
-  // Loop through each move and assign it a score
-  // TTmove, Captues, Promotions, Killer MOves, Castling, History heuristics
   for (Move move : moves) {
     int score = 0;
+    bool isInterestingForQuiescence = false;
 
-    // Prioritize ttMove and break after putting on top
-    if (ttMove != Move::NULL_MOVE && move == ttMove) {
+    // In main search, prioritize ttMove and handle it separately
+    if (!isQuiescence && ttMove != Move::NULL_MOVE && move == ttMove) {
       scoredMoves.emplace_back(move, 10000);
       continue;
     }
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
+      isInterestingForQuiescence = true;
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
       score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
     }
 
     // Prioritize promotions
-    if (move.promotionType() == QUEEN)
-      score += 900;
-    else if (move.promotionType() == ROOK)
-      score += 500;
-    else if (move.promotionType() == BISHOP)
-      score += 320;
-    else if (move.promotionType() == KNIGHT)
-      score += 300;
+    if (move.typeOf() == Move::PROMOTION) {
+      isInterestingForQuiescence = true;
+      if (move.promotionType() == QUEEN)
+        score += 900;
+      else if (move.promotionType() == ROOK)
+        score += 500;
+      else if (move.promotionType() == BISHOP)
+        score += 320;
+      else if (move.promotionType() == KNIGHT)
+        score += 300;
+    }
 
-    // Killer moves score
-    if (!board.isCapture(move)) {
-      if (move == killer1) {
-        score = 500;  // High score for primary killer
-      } else if (move == killer2) {
-        score = 400;  // Slightly lower score for secondary killer
+    if (isQuiescence) {
+      board.makeMove(move);
+      if (board.inCheck()) {
+        isInterestingForQuiescence = true;
+        score += 100;
       }
-    }
+      board.unmakeMove(move);
 
-    // Give a slight edge to castling
-    if (move.typeOf() == Move::CASTLING) {
-      score += 300;
-    }
+      if (isInterestingForQuiescence) {
+        scoredMoves.emplace_back(move, score);
+      }
+    } else {
+      if (!board.isCapture(move)) {
+        if (move == killer1) {
+          score = 500;  // High score for primary killer
+        } else if (move == killer2) {
+          score = 400;  // Slightly lower score for secondary killer
+        }
+      }
 
-    // Add the move to the list along with its score
-    scoredMoves.emplace_back(move, score);
+      // Give a slight edge to castling
+      if (move.typeOf() == Move::CASTLING) {
+        score += 300;
+      }
+
+      // Add the move to the list along with its score
+      scoredMoves.emplace_back(move, score);
+    }
   }
 
   // Sort the moves based on scores
@@ -275,7 +291,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
 
   Movelist moves;
   movegen::legalmoves(moves, board);
-  orderQuiescMoves(moves);
+  orderMoves(moves, Move::NULL_MOVE, ply, true);
 
   for (Move move : moves) {
     board.makeMove(move);
@@ -289,57 +305,6 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   }
 
   return alpha;
-}
-
-void Search::orderQuiescMoves(Movelist &moves) {
-  std::vector<std::pair<Move, int>> scoredMoves;
-  scoredMoves.reserve(moves.size());
-
-  for (Move move : moves) {
-    int score = 0;
-    bool isInteresting = false;
-
-    if (board.isCapture(move)) {
-      isInteresting = true;
-      Piece attacker = board.at(move.from());
-      Piece victim = board.at(move.to());
-      score += 100 * getPieceValue(victim) - getPieceValue(attacker);
-    }
-
-    if (move.typeOf() == Move::PROMOTION) {
-      isInteresting = true;
-      if (move.promotionType() == QUEEN) {
-        score += 900;
-      } else if (move.promotionType() == ROOK) {
-        score += 500;
-      } else if (move.promotionType() == BISHOP) {
-        score += 320;
-      } else if (move.promotionType() == KNIGHT) {
-        score += 300;
-      }
-    }
-
-    // ! Expensive But we cannot miss checks in q search
-    // Check for checks
-    board.makeMove(move);
-    if (board.inCheck()) {
-      isInteresting = true;
-      score += 100;  // Bonus for giving check
-    }
-    board.unmakeMove(move);
-
-    if (isInteresting) {
-      scoredMoves.emplace_back(move, score);
-    }
-  }
-
-  std::sort(scoredMoves.begin(), scoredMoves.end(),
-            [](const auto &a, const auto &b) { return a.second > b.second; });
-
-  moves.clear();
-  for (const auto &[move, score] : scoredMoves) {
-    moves.add(move);
-  }
 }
 
 // Heuristics
