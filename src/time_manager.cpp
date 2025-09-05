@@ -16,21 +16,20 @@ int Search::count_pieces(const chess::Board &board) {
          board.pieces(chess::PieceType::QUEEN, chess::Color::BLACK).count();
 }
 
-CalculatedTime Search::calculateSearchTime(chess::Board &board) {
-  CalculatedTime values;
-
+// Calculates and sets time variables
+void Search::calculateSearchTime() {
   // Infinte Case
   if (wtime <= 0 && btime <= 0 && movetime <= 0) {
-    values.soft_time = INFINITE_TIME;
-    values.hard_time = INFINITE_TIME;
-    return values;
+    soft_time_limit = INFINITE_TIME;
+    hard_time_limit = INFINITE_TIME;
+    return;
   }
 
   // Given movetime
   if (movetime > 0) {
-    values.soft_time = movetime;
-    values.hard_time = movetime;
-    return values;
+    soft_time_limit = movetime;
+    hard_time_limit = movetime;
+    return;
   }
 
   // Now lets calculate for normal commands
@@ -41,9 +40,9 @@ CalculatedTime Search::calculateSearchTime(chess::Board &board) {
 
   // Safety check - don't search if we have very little time
   if (remaining_time < SAFETY_BUFFER) {
-    values.soft_time = MIN_SEARCH_TIME;
-    values.hard_time = MIN_SEARCH_TIME;
-    return values;
+    soft_time_limit = MIN_SEARCH_TIME;
+    hard_time_limit = MIN_SEARCH_TIME;
+    return;
   }
 
   long long base_time = (remaining_time - SAFETY_BUFFER) / moves_remaining;
@@ -75,12 +74,8 @@ CalculatedTime Search::calculateSearchTime(chess::Board &board) {
 
   // Don't exceed remaining time minus safety buffer
   long long max_time = remaining_time - SAFETY_BUFFER;
-  soft_time = std::min(soft_time, max_time);
-  hard_time = std::min(hard_time, max_time);
-
-  values.soft_time = soft_time;
-  values.hard_time = hard_time;
-  return values;
+  soft_time_limit = std::min(soft_time, max_time);
+  hard_time_limit = std::min(hard_time, max_time);
 }
 
 // Estimate moves remaining based on game phase
@@ -177,6 +172,12 @@ void Search::setTimevalues(int wtime, int btime, int winc, int binc,
   this->binc = static_cast<long long>(binc);
   this->movestogo = static_cast<long long>(movestogo);
   this->movetime = static_cast<long long>(movetime);
+
+  if (this->wtime <= 0 && this->btime <= 0 && this->movetime <= 0) {
+    this->time_controls_enabled = false;
+  } else {
+    this->time_controls_enabled = true;
+  }
 }
 
 bool Search::manageTime(long long elapsed_time) {

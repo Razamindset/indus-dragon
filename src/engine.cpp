@@ -54,11 +54,7 @@ void Engine::handle_go(std::istringstream &iss) {
     }
   }
 
-  bool is_time_enabled = (wtime > 0 || btime > 0 || movetime > 0);
-
   search.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
-
-  search.setTimeControlsEnabled(is_time_enabled);
 
   stopRequested = false;  // Reset the stop flag
 

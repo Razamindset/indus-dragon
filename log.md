@@ -27,3 +27,9 @@ The negamax works similar to min max but the code is shorte. We take each player
 Have added a nnue file that will be used for board evaluation instead of a handcrafted function.
 For using the nnue I am using the probe nnue library that gives bataries to load and evaluate positions. https://github.com/dshawul/nnue-probe. The library currently only supports a specific 20MB nnue. In future i plan to expand it so i can load multi nnues or different networks.
 The nnue file is from some old stockfish version. I am actively working on training custom networks for indus dragon but it will take quite some time to get right cause turns out its not very straight forward. There are many constraints at hand like data, training resources, Until then I will focus more on refactoring the code and improving the search.
+
+## Full Code Refactor
+
+Dated: 30th august 2025
+I refactored a lot of code from my chess engine mostly related to the uci adapter. The goal was to some what simplify the code so it is more understandable and performant. Many files were removed and added...
+Commit: 6a95e7a

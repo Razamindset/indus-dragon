@@ -7,7 +7,12 @@
 #include "nnue/nnue.h"
 
 Search::Search(Board &board, TranspositionTable &tt_helper)
-    : board(board), tt_helper(tt_helper) {}
+    : board(board), tt_helper(tt_helper) {
+  pvTable.resize(MAX_SEARCH_DEPTH);
+  for (auto &pv : pvTable) {
+    pv.reserve(MAX_SEARCH_DEPTH);
+  }
+}
 
 void Search::searchBestMove() {
   stopSearchFlag = false;
@@ -15,32 +20,30 @@ void Search::searchBestMove() {
     return;
   }
 
-  CalculatedTime times = calculateSearchTime(board);
-  soft_time_limit = times.soft_time;
-  hard_time_limit = times.hard_time;
+  calculateSearchTime();
+  clearKiller();
 
   search_start_time = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
+
   best_move_changes = 0;
+
   Move last_iteration_best_move = Move::NULL_MOVE;
-  clearKiller();
 
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
-    std::vector<Move> currentBestLine;
-
-    int bestEval =
-        negamax(currentDepth, -MATE_SCORE, MATE_SCORE, currentBestLine, 0);
+    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0);
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag) {
       break;
     }
 
+    const auto &currentBestLine = pvTable[0];
     if (!currentBestLine.empty()) {
       if (last_iteration_best_move != Move::NULL_MOVE &&
           currentBestLine.front() != last_iteration_best_move) {
@@ -84,8 +87,7 @@ void Search::searchBestMove() {
   logMessage(bestmove_str);
 }
 
-int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
-                    int ply) {
+int Search::negamax(int depth, int alpha, int beta, int ply) {
   if (stopSearchFlag) {
     return 0;
   }
@@ -94,7 +96,7 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
     return 0;
   }
 
-  pv.clear();
+  pvTable[ply].clear();
 
   positionsSearched++;
 
@@ -149,15 +151,19 @@ int Search::negamax(int depth, int alpha, int beta, std::vector<Move> &pv,
     Move move = moves[i];
     board.makeMove(move);
 
-    std::vector<Move> childPv;
-    int eval = -negamax(depth - 1, -beta, -alpha, childPv, ply + 1);
+    int eval = -negamax(depth - 1, -beta, -alpha, ply + 1);
     board.unmakeMove(move);
 
     if (eval > bestScore) {
       bestScore = eval;
       bestMove = move;
-      pv = {move};
-      pv.insert(pv.end(), childPv.begin(), childPv.end());
+
+      pvTable[ply].clear();
+      pvTable[ply].push_back(move);
+      if (ply + 1 < MAX_SEARCH_DEPTH && !pvTable[ply + 1].empty()) {
+        pvTable[ply].insert(pvTable[ply].end(), pvTable[ply + 1].begin(),
+                            pvTable[ply + 1].end());
+      }
     }
     alpha = std::max(bestScore, alpha);
 

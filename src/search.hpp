@@ -11,11 +11,6 @@
 
 using namespace chess;
 
-struct CalculatedTime {
-  long long soft_time;
-  long long hard_time;
-};
-
 class Search {
  public:
   Search(Board &board, TranspositionTable &tt_helper);
@@ -23,8 +18,6 @@ class Search {
   void searchBestMove();
 
   void stopSearch() { stopSearchFlag = true; }
-
-  void setTimeControlsEnabled(bool enabled) { time_controls_enabled = enabled; }
 
   void setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
                      int movetime);
@@ -48,7 +41,9 @@ class Search {
   void clearKiller();
 
   // Search
-  int negamax(int depth, int alpha, int beta, std::vector<Move> &pv, int ply);
+  std::vector<std::vector<Move>> pvTable;
+
+  int negamax(int depth, int alpha, int beta, int ply);
 
   int quiescenceSearch(int alpha, int beta, int ply);
 
@@ -82,7 +77,7 @@ class Search {
 
   bool checkHardTimeLimit();
 
-  CalculatedTime calculateSearchTime(chess::Board &board);
+  void calculateSearchTime();
 
   int estimateMovesToGo(const chess::Board &board);
 
