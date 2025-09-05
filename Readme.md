@@ -36,7 +36,7 @@ The executable will be created in the root of the project.
 Make sure the .nnue file is in the same directory form where u run the programme.
 U can also use cmake if u want. Pretty same Configration just make sure to add paths for all the files.
 
-3. Clean .o files
+3. Clean .o files if using makefile but this will aslo clean the engine executable if u wanna use it keep a copy saved first. then clean all executables.
 
 ```sh
 make clean
