@@ -1,8 +1,6 @@
 #pragma once
 
-#include <atomic>
 #include <string>
-#include <thread>
 
 #include "chess.hpp"
 #include "constants.hpp"
@@ -36,7 +34,4 @@ class Engine {
   chess::Board board;
   TranspositionTable tt_helper;
   Search search;
-
-  std::thread searchThread;
-  std::atomic<bool> stopRequested;
 };

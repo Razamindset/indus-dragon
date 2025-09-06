@@ -1,10 +1,32 @@
 #include "search.hpp"
 
+#include <poll.h>
+#include <unistd.h>
+
 #include <fstream>
 #include <iostream>
 
 #include "constants.hpp"
 #include "nnue/nnue.h"
+
+// Check if there is any input waiting to be processed
+void Search::uci_input_handler() {
+  struct pollfd fds[1];
+  fds[0].fd = STDIN_FILENO;
+  fds[0].events = POLLIN;
+
+  if (poll(fds, 1, 0) > 0) {
+    std::string line;
+    std::getline(std::cin, line);
+    if (line == "stop") {
+      stopSearchFlag = true;
+    } else if (line == "quit") {
+      tt_helper.clear_table();
+      clearKiller();
+      exit(0);
+    }
+  }
+}
 
 Search::Search(Board &board, TranspositionTable &tt_helper)
     : board(board), tt_helper(tt_helper) {
@@ -88,6 +110,10 @@ void Search::searchBestMove() {
 }
 
 int Search::negamax(int depth, int alpha, int beta, int ply) {
+  if ((positionsSearched & 2047) == 0) {
+    uci_input_handler();
+  }
+
   if (stopSearchFlag) {
     return 0;
   }
@@ -279,6 +305,10 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
 
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, int ply) {
+  if ((positionsSearched & 2047) == 0) {
+    uci_input_handler();
+  }
+
   if (stopSearchFlag) {
     return 0;
   }

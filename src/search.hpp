@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <string>
 #include <vector>
@@ -26,12 +25,14 @@ class Search {
 
   void toggleLogs() { storeLogs = !storeLogs; }
 
+  void uci_input_handler();
+
  private:
   Board &board;
 
   TranspositionTable &tt_helper;
 
-  std::atomic<bool> stopSearchFlag{false};
+  bool stopSearchFlag{false};
 
   long long positionsSearched = 0;
 

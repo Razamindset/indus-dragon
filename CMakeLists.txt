@@ -24,9 +24,7 @@ add_executable(${EXECUTABLE_NAME} ${SOURCES})
 # Include directories
 target_include_directories(${EXECUTABLE_NAME} PUBLIC src)
 
-# Find and link threads
-find_package(Threads REQUIRED)
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE Threads::Threads)
+
 
 # Set compiler flags for release builds
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")

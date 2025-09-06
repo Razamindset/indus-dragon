@@ -13,15 +13,7 @@ void Engine::makeMove(std::string move) {
   board.makeMove(parsedMove);
 }
 
-void Engine::handle_stop() {
-  if (searchThread.joinable()) {
-    stopRequested = true;  // Signal stop first
-
-    stopSearch();
-
-    searchThread.join();
-  }
-}
+void Engine::handle_stop() { stopSearch(); }
 
 void Engine::handle_go(std::istringstream &iss) {
   handle_stop();
@@ -56,16 +48,7 @@ void Engine::handle_go(std::istringstream &iss) {
 
   search.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
 
-  stopRequested = false;  // Reset the stop flag
-
-  searchThread = std::thread([this]() {
-    try {
-      search.searchBestMove();
-
-    } catch (const std::exception &e) {
-      std::cout << "Exception in search thread \n";
-    }
-  });
+  search.searchBestMove();
 }
 
 void Engine::handle_positon(std::istringstream &iss) {
