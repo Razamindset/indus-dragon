@@ -26,25 +26,23 @@ git clone https://github.com/Razamindset/indus-dragon
 cd indus-dragon
 ```
 
-2. Build the executable
+2. Create a build directory and copy the network file into it then move into build
 
 ```sh
-make
+mkdir build
+cd build
 ```
 
-The executable will be created in the root of the project.
-Make sure the .nnue file is in the same directory form where u run the programme.
-U can also use cmake if u want. Pretty same Configration just make sure to add paths for all the files.
-
-3. Clean .o files if using makefile but this will aslo clean the engine executable if u wanna use it keep a copy saved first. then clean all executables.
+3. Build the executable.
+   Note: U can also specify build type. By default it is release that is optimized and faster. U can also use debug mode but it will be very slow only recomended for debugging.
 
 ```sh
-make clean
+cmake .. && make
 ```
+
+The executable will be created in the directory make sure the network file is present before running the engine
 
 ## Running the Engine
-
-After building, you can run the engine from the build directory:
 
 ```sh
 ./indus-dragon
