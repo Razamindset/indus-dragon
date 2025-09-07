@@ -52,6 +52,8 @@ class Search {
 
   int evaluate(int ply);
 
+  int piece_to_nnue(chess::Piece piece);
+
   bool isGameOver(const chess::Board &board);
 
   GameResultReason getGameOverReason(const chess::Board &board);

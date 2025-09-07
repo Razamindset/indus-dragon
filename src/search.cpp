@@ -127,7 +127,10 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
   positionsSearched++;
 
   if (isGameOver(board)) {
-    return -MATE_SCORE + ply;
+    if (getGameOverReason(board) == GameResultReason::CHECKMATE)
+      return -MATE_SCORE + ply;
+    else
+      return 0;
   }
 
   if (depth == 0) {
@@ -264,7 +267,10 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   positionsSearched++;
 
   if (isGameOver(board)) {
-    return -MATE_SCORE + ply;
+    if (getGameOverReason(board) == GameResultReason::CHECKMATE)
+      return -MATE_SCORE + ply;
+    else
+      return 0;
   }
 
   int standPat = evaluate(ply);
@@ -301,16 +307,16 @@ void Search::clearKiller() {
 }
 
 int Search::getPieceValue(Piece piece) {
-  switch (piece) {
-    case PieceGenType::PAWN:
+  switch (piece.type().internal()) {
+    case chess::PieceType::PAWN:
       return 100;
-    case PieceGenType::KNIGHT:
+    case chess::PieceType::KNIGHT:
       return 300;
-    case PieceGenType::BISHOP:
+    case chess::PieceType::BISHOP:
       return 320;
-    case PieceGenType::ROOK:
+    case chess::PieceType::ROOK:
       return 500;
-    case PieceGenType::QUEEN:
+    case chess::PieceType::QUEEN:
       return 900;
     default:
       return 0;  // King has no material value
@@ -318,7 +324,80 @@ int Search::getPieceValue(Piece piece) {
 }
 
 int Search::evaluate(int ply) {
-  return nnue_evaluate_fen(board.getFen().c_str());
+  int pieces[33];
+  int squares[33];
+
+  int player = (board.sideToMove() == chess::Color::WHITE) ? 0 : 1;
+
+  int index = 2;
+
+  pieces[0] = squares[0] = 0;
+  pieces[1] = squares[1] = 0;
+
+  for (Square sq = 0; sq < 64; ++sq) {
+    chess::Piece piece = board.at(sq);
+
+    if (piece != Piece::NONE) {
+      int nnue_piece = piece_to_nnue(piece);
+
+      if (nnue_piece == 1) {
+        // WHite king
+        pieces[0] = nnue_piece;
+        squares[0] = sq.index();
+
+      } else if (nnue_piece == 7) {
+        // black king
+        pieces[1] = nnue_piece;
+        squares[1] = sq.index();
+
+      } else {
+        pieces[index] = nnue_piece;
+        squares[index] = sq.index();
+        index++;
+      }
+    }
+  }
+
+  // Null-terminate the arrays
+  pieces[index] = 0;
+  squares[index] = 0;
+
+  return nnue_evaluate(player, pieces, squares);
+}
+
+int Search::piece_to_nnue(chess::Piece piece) {
+  int nnue_piece = 0;
+
+  // Map piece types to NNUE indices
+  switch (piece.type().internal()) {
+    case chess::PieceType::KING:
+      nnue_piece = 1;
+      break;
+    case chess::PieceType::QUEEN:
+      nnue_piece = 2;
+      break;
+    case chess::PieceType::ROOK:
+      nnue_piece = 3;
+      break;
+    case chess::PieceType::BISHOP:
+      nnue_piece = 4;
+      break;
+    case chess::PieceType::KNIGHT:
+      nnue_piece = 5;
+      break;
+    case chess::PieceType::PAWN:
+      nnue_piece = 6;
+      break;
+    default:
+      return 0;  // Should not happen for valid pieces
+  }
+
+  // Add 6 for black pieces (white pieces: 1-6, black pieces: 7-12)
+  if (piece.color() == Color::BLACK) {
+    nnue_piece += 6;
+  }
+
+  return nnue_piece;
 }
 
 bool Search::isGameOver(const chess::Board &board) {
