@@ -50,7 +50,7 @@ class Search {
 
   void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
 
-  int evaluate(int ply);
+  int evaluate();
 
   int piece_to_nnue(chess::Piece piece);
 

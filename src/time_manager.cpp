@@ -131,7 +131,7 @@ double Search::getPositionFactor(const chess::Board &board) {
 
 // Adjust time based on evaluation score
 double Search::getEvaluationFactor(const chess::Board &board) {
-  int eval_score = nnue_evaluate_fen(board.getFen().c_str());
+  int eval_score = evaluate();
 
   // Convert to our side's perspective
   if (board.sideToMove() == chess::Color::BLACK) {

@@ -273,7 +273,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
       return 0;
   }
 
-  int standPat = evaluate(ply);
+  int standPat = evaluate();
 
   if (standPat >= beta) {
     return beta;
@@ -323,7 +323,7 @@ int Search::getPieceValue(Piece piece) {
   }
 }
 
-int Search::evaluate(int ply) {
+int Search::evaluate() {
   int pieces[33];
   int squares[33];
 
