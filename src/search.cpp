@@ -127,19 +127,17 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
   positionsSearched++;
 
   if (isGameOver(board)) {
-    return evaluate(ply);
+    return -MATE_SCORE + ply;
   }
 
   if (depth == 0) {
     return quiescenceSearch(alpha, beta, ply);
   }
 
-  // This position has appeared second time
   if (board.isRepetition(1)) {
     return 0;
   }
 
-  // Draw by fifty moves rule
   if (board.isHalfMoveDraw() &&
       board.getHalfMoveDrawType().second == GameResult::DRAW) {
     return 0;
@@ -150,7 +148,6 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
   Move ttMove = Move::NULL_MOVE;
   int originalAlpha = alpha;
 
-  // See if a score exists in tt.
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply) &&
       ply > 0) {
     return ttScore;
@@ -158,15 +155,6 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
 
   Movelist moves;
   movegen::legalmoves(moves, board);
-
-  // FIX: Check for no legal moves (checkmate/stalemate)
-  if (moves.size() == 0) {
-    if (board.inCheck()) {
-      return -MATE_SCORE + ply;  // Checkmate Score
-    } else {
-      return 0;  // Draw
-    }
-  }
 
   orderMoves(moves, ttMove, ply, false);
 
@@ -194,19 +182,16 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
     alpha = std::max(bestScore, alpha);
 
     if (alpha >= beta) {
-      // Store killer moves BEFORE breaking
       if (!board.isCapture(move) && move.typeOf() != Move::PROMOTION) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
       }
-      // FIX: Still store in TT even with beta cutoff
-      tt_helper.storeTT(boardhash, depth, bestScore, TTEntryType::LOWER,
-                        bestMove, ply);
+      tt_helper.storeTT(boardhash, depth, beta, TTEntryType::LOWER, bestMove,
+                        ply);
       break;
     }
   }
 
-  // Store in transposition table
   TTEntryType entryType;
   if (bestScore <= originalAlpha) {
     entryType = TTEntryType::UPPER;
@@ -224,34 +209,31 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
 /* Order moves based on their priority */
 void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
                         bool isQuiescence) {
-  std::vector<std::pair<Move, int>> scoredMoves;
-  scoredMoves.reserve(moves.size());
+  const Move killer1 = killerMoves[ply][0];
+  const Move killer2 = killerMoves[ply][1];
 
-  // Get the killer moves for the main search
-  const Move killer1 = isQuiescence ? Move::NULL_MOVE : killerMoves[ply][0];
-  const Move killer2 = isQuiescence ? Move::NULL_MOVE : killerMoves[ply][1];
-
-  for (Move move : moves) {
+  for (Move &move : moves) {
     int score = 0;
-    bool isInterestingForQuiescence = false;
 
-    // In main search, prioritize ttMove and handle it separately
-    if (!isQuiescence && ttMove != Move::NULL_MOVE && move == ttMove) {
-      scoredMoves.emplace_back(move, 10000);
-      continue;
+    if (ttMove != Move::NULL_MOVE && move == ttMove) {
+      score += 10000;
     }
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
-      isInterestingForQuiescence = true;
       Piece attacker = board.at(move.from());
       Piece victim = board.at(move.to());
-      score += 1000 + 100 * getPieceValue(victim) - getPieceValue(attacker);
+      score += 3000 + getPieceValue(victim) - getPieceValue(attacker);
+    } else {
+      if (move == killer1) {
+        score += 500;  // High score for primary killer
+      } else if (move == killer2) {
+        score += 400;  // Slightly lower score for secondary killer
+      }
     }
 
     // Prioritize promotions
     if (move.typeOf() == Move::PROMOTION) {
-      isInterestingForQuiescence = true;
       if (move.promotionType() == QUEEN)
         score += 900;
       else if (move.promotionType() == ROOK)
@@ -262,45 +244,12 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
         score += 300;
     }
 
-    if (isQuiescence) {
-      board.makeMove(move);
-      if (board.inCheck()) {
-        isInterestingForQuiescence = true;
-        score += 100;
-      }
-      board.unmakeMove(move);
-
-      if (isInterestingForQuiescence) {
-        scoredMoves.emplace_back(move, score);
-      }
-    } else {
-      if (!board.isCapture(move)) {
-        if (move == killer1) {
-          score = 500;  // High score for primary killer
-        } else if (move == killer2) {
-          score = 400;  // Slightly lower score for secondary killer
-        }
-      }
-
-      // Give a slight edge to castling
-      if (move.typeOf() == Move::CASTLING) {
-        score += 300;
-      }
-
-      // Add the move to the list along with its score
-      scoredMoves.emplace_back(move, score);
-    }
+    move.setScore(static_cast<int16_t>(score));
   }
 
-  // Sort the moves based on scores
-  std::sort(scoredMoves.begin(), scoredMoves.end(),
-            [](const auto &a, const auto &b) { return a.second > b.second; });
-
-  // Replace original move list with sorted moves
-  moves.clear();
-  for (const auto &[move, score] : scoredMoves) {
-    moves.add(move);
-  }
+  // Sort moves in descending order of score
+  std::sort(moves.begin(), moves.end(),
+            [](const Move &a, const Move &b) { return a.score() > b.score(); });
 }
 
 /* Reach a stable quiet pos before evaluating */
@@ -315,7 +264,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   positionsSearched++;
 
   if (isGameOver(board)) {
-    return evaluate(ply);
+    return -MATE_SCORE + ply;
   }
 
   int standPat = evaluate(ply);
@@ -326,7 +275,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   alpha = std::max(alpha, standPat);
 
   Movelist moves;
-  movegen::legalmoves(moves, board);
+  movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
   orderMoves(moves, Move::NULL_MOVE, ply, true);
 
   for (Move move : moves) {
@@ -369,12 +318,6 @@ int Search::getPieceValue(Piece piece) {
 }
 
 int Search::evaluate(int ply) {
-  if (isGameOver(board)) {
-    if (getGameOverReason(board) == GameResultReason::CHECKMATE) {
-      return -MATE_SCORE + ply;
-    }
-    return DRAW_SCORE;
-  }
   return nnue_evaluate_fen(board.getFen().c_str());
 }
 
