@@ -148,17 +148,17 @@ double Search::getEvaluationFactor(const chess::Board &board) {
   }
 
   // Clearly winning positions - spend less time, play faster
-  else if (eval_score > 300) {    // Winning by 3+ pawns
-    factor *= 0.7;                // Spend 30% less time
+  else if (eval_score > 300) {  // Winning by 3+ pawns
+    factor *= 0.8;              // Spend 20% less time
   } else if (eval_score > 150) {  // Winning by 1.5+ pawns
-    factor *= 0.85;               // Spend 15% less time
+    factor *= 0.9;                // Spend 10% less time
   }
 
   // Clearly losing positions - spend more time to find tactics/tricks
-  else if (eval_score < -300) {    // Losing by 3+ pawns
-    factor *= 1.3;                 // Spend more time looking for tactical shots
+  else if (eval_score < -300) {  // Losing by 3+ pawns
+    factor *= 1.2;               // Spend more time looking for tactical shots
   } else if (eval_score < -150) {  // Losing by 1.5+ pawns
-    factor *= 1.1;                 // Spend slightly more time
+    factor *= 1.1;               // Spend slightly more time
   }
 
   return std::max(0.6, std::min(1.8, factor));  // Clamp between 0.6x and 1.8x

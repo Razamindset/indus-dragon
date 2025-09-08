@@ -41,6 +41,10 @@ class Search {
 
   void clearKiller();
 
+  int historyTable[2][64][64];
+
+  void clearHistory();
+
   // Search
   std::vector<std::vector<Move>> pvTable;
 

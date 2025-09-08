@@ -23,6 +23,7 @@ void Search::uci_input_handler() {
     } else if (line == "quit") {
       tt_helper.clear_table();
       clearKiller();
+      clearHistory();
       exit(0);
     }
   }
@@ -44,6 +45,7 @@ void Search::searchBestMove() {
 
   calculateSearchTime();
   clearKiller();
+  clearHistory();
 
   search_start_time = std::chrono::steady_clock::now();
 
@@ -188,6 +190,10 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
       if (!board.isCapture(move) && move.typeOf() != Move::PROMOTION) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
+
+        // History score
+        historyTable[board.sideToMove()][move.from().index()]
+                    [move.to().index()] = depth * depth;
       }
       tt_helper.storeTT(boardhash, depth, beta, TTEntryType::LOWER, bestMove,
                         ply);
@@ -233,6 +239,10 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
       } else if (move == killer2) {
         score += 400;  // Slightly lower score for secondary killer
       }
+
+      // History score
+      score += historyTable[board.sideToMove()][move.from().index()]
+                           [move.to().index()];
     }
 
     // Prioritize promotions
@@ -280,8 +290,16 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
   }
   alpha = std::max(alpha, standPat);
 
+  Movelist allMoves;
+  movegen::legalmoves<movegen::MoveGenType::ALL>(allMoves, board);
+
   Movelist moves;
-  movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
+  for (Move m : allMoves) {
+    if (board.isCapture(m) || m.typeOf() == Move::PROMOTION) {
+      moves.add(m);
+    }
+  }
+
   orderMoves(moves, Move::NULL_MOVE, ply, true);
 
   for (Move move : moves) {
@@ -303,6 +321,16 @@ void Search::clearKiller() {
   for (int i = 0; i < MAX_SEARCH_DEPTH; ++i) {
     killerMoves[i][0] = chess::Move::NULL_MOVE;
     killerMoves[i][1] = chess::Move::NULL_MOVE;
+  }
+}
+
+void Search::clearHistory() {
+  for (int c = 0; c < 2; c++) {
+    for (int from = 0; from < 64; from++) {
+      for (int to = 0; to < 64; to++) {
+        historyTable[c][from][to] = 0;
+      }
+    }
   }
 }
 
@@ -362,42 +390,27 @@ int Search::evaluate() {
   pieces[index] = 0;
   squares[index] = 0;
 
+  assert(pieces[0] != 0);
+  assert(pieces[1] != 0);
+
+  // TODO: This is a huge performance bottleneck.
+  // Every call to evaluate() creates a new NNUEdata object, which forces a
+  // full recalculation of the accumulator. The correct way to do this is to
+  // use nnue_evaluate_incremental() and pass the NNUEdata pointer down the
+  // search tree. This requires significant changes to the search logic and
+  // Board class to store and update the NNUEdata pointer.
   return nnue_evaluate(player, pieces, squares);
 }
 
 int Search::piece_to_nnue(chess::Piece piece) {
-  int nnue_piece = 0;
-
-  // Map piece types to NNUE indices
-  switch (piece.type().internal()) {
-    case chess::PieceType::KING:
-      nnue_piece = 1;
-      break;
-    case chess::PieceType::QUEEN:
-      nnue_piece = 2;
-      break;
-    case chess::PieceType::ROOK:
-      nnue_piece = 3;
-      break;
-    case chess::PieceType::BISHOP:
-      nnue_piece = 4;
-      break;
-    case chess::PieceType::KNIGHT:
-      nnue_piece = 5;
-      break;
-    case chess::PieceType::PAWN:
-      nnue_piece = 6;
-      break;
-    default:
-      return 0;  // Should not happen for valid pieces
+  static const int p_map[] = {6, 5, 4, 3, 2, 1};
+  int p_type = static_cast<int>(piece.type().internal());
+  if (p_type > 5) return 0;
+  int nnue_p = p_map[p_type];
+  if (piece.color() == chess::Color::BLACK) {
+    nnue_p += 6;
   }
-
-  // Add 6 for black pieces (white pieces: 1-6, black pieces: 7-12)
-  if (piece.color() == Color::BLACK) {
-    nnue_piece += 6;
-  }
-
-  return nnue_piece;
+  return nnue_p;
 }
 
 bool Search::isGameOver(const chess::Board &board) {
