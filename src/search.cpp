@@ -399,6 +399,10 @@ int Search::evaluate() {
   // use nnue_evaluate_incremental() and pass the NNUEdata pointer down the
   // search tree. This requires significant changes to the search logic and
   // Board class to store and update the NNUEdata pointer.
+
+  // ! The current code gives a nps of about 150K + in starting postion.
+  // if i set the eval to constant of 0 then the nps is about 700K which means
+  // that this part of the engine is expensive as above comments
   return nnue_evaluate(player, pieces, squares);
 }
 
