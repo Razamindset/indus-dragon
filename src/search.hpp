@@ -7,6 +7,7 @@
 #include "chess.hpp"
 #include "constants.hpp"
 #include "tt.hpp"
+#include "evaluation.hpp"
 
 using namespace chess;
 
@@ -32,6 +33,8 @@ class Search {
 
   TranspositionTable &tt_helper;
 
+  Evaluation evaluator;
+  
   bool stopSearchFlag{false};
 
   long long positionsSearched = 0;

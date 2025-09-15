@@ -18,3 +18,10 @@ constexpr int INCOMPLETE_SEARCH = INT_MIN;
 
 // MAX search depth
 constexpr int MAX_SEARCH_DEPTH = 24;
+
+// Piece values in centipawns
+constexpr int PAWN_VALUE = 100;
+constexpr int KNIGHT_VALUE = 300;
+constexpr int BISHOP_VALUE = 320;
+constexpr int ROOK_VALUE = 500;
+constexpr int QUEEN_VALUE = 900;

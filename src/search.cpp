@@ -1,16 +1,36 @@
 #include "search.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <conio.h>
+#else
 #include <poll.h>
 #include <unistd.h>
+#endif
 
 #include <fstream>
-#include <iostream>
 
-#include "constants.hpp"
-#include "nnue/nnue.h"
 
-// Check if there is any input waiting to be processed
+/*
+Check if there is any input waiting to be processed. 
+The api is different for windows and unix based systems.
+*/
 void Search::uci_input_handler() {
+#ifdef _WIN32
+  // Windows: check if input is available using _kbhit and _getch
+  if (_kbhit()) {
+    std::string line;
+    std::getline(std::cin, line);
+    if (line == "stop") {
+      stopSearchFlag = true;
+    } else if (line == "quit") {
+      tt_helper.clear_table();
+      clearKiller();
+      clearHistory();
+      exit(0);
+    }
+  }
+#else
   struct pollfd fds[1];
   fds[0].fd = STDIN_FILENO;
   fds[0].events = POLLIN;
@@ -27,6 +47,7 @@ void Search::uci_input_handler() {
       exit(0);
     }
   }
+#endif
 }
 
 Search::Search(Board &board, TranspositionTable &tt_helper)
@@ -352,58 +373,7 @@ int Search::getPieceValue(Piece piece) {
 }
 
 int Search::evaluate() {
-  int pieces[33];
-  int squares[33];
-
-  int player = (board.sideToMove() == chess::Color::WHITE) ? 0 : 1;
-
-  int index = 2;
-
-  pieces[0] = squares[0] = 0;
-  pieces[1] = squares[1] = 0;
-
-  for (Square sq = 0; sq < 64; ++sq) {
-    chess::Piece piece = board.at(sq);
-
-    if (piece != Piece::NONE) {
-      int nnue_piece = piece_to_nnue(piece);
-
-      if (nnue_piece == 1) {
-        // WHite king
-        pieces[0] = nnue_piece;
-        squares[0] = sq.index();
-
-      } else if (nnue_piece == 7) {
-        // black king
-        pieces[1] = nnue_piece;
-        squares[1] = sq.index();
-
-      } else {
-        pieces[index] = nnue_piece;
-        squares[index] = sq.index();
-        index++;
-      }
-    }
-  }
-
-  // Null-terminate the arrays
-  pieces[index] = 0;
-  squares[index] = 0;
-
-  assert(pieces[0] != 0);
-  assert(pieces[1] != 0);
-
-  // TODO: This is a huge performance bottleneck.
-  // Every call to evaluate() creates a new NNUEdata object, which forces a
-  // full recalculation of the accumulator. The correct way to do this is to
-  // use nnue_evaluate_incremental() and pass the NNUEdata pointer down the
-  // search tree. This requires significant changes to the search logic and
-  // Board class to store and update the NNUEdata pointer.
-
-  // ! The current code gives a nps of about 150K + in starting postion.
-  // if i set the eval to constant of 0 then the nps is about 700K which means
-  // that this part of the engine is expensive as above comments
-  return nnue_evaluate(player, pieces, squares);
+ return evaluator.evaluate(board);
 }
 
 int Search::piece_to_nnue(chess::Piece piece) {

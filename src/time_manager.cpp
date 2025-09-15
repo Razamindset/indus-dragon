@@ -1,6 +1,5 @@
 #include <algorithm>
 
-#include "nnue/nnue.h"
 #include "search.hpp"
 
 int Search::count_pieces(const chess::Board &board) {
