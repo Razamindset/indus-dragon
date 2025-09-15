@@ -33,3 +33,18 @@ The nnue file is from some old stockfish version. I am actively working on train
 Dated: 30th august 2025
 I refactored a lot of code from my chess engine mostly related to the uci adapter. The goal was to some what simplify the code so it is more understandable and performant. Many files were removed and added...
 Commit: 6a95e7a
+
+## Reverting to HCE
+
+Dated: 14 sep 2025
+I took a break and took some sleep. After thinking over my decissions and choices I have realized many things.
+If I truly want to learn about chess engines I would have to take a traditional path that starts from writing a custom hce.
+and then incrementally moving towards custom NNUE. Using stockfish nnue was quite nice but that way it will hault my learning progress. From now on I will working on the hce version of the engine in a separate branch (custom/hce) I may use some of the earlier code from the early commits.
+I have high hopes and I believe I can pull this off. Earlier my progress with HCE was haulted because I didnot have a clear path. But now I know it, that is
+
+1. Do changes
+2. Use fast chess to play matches with the previous version.
+3. If see any elo gain adopt the new versions.
+
+Keep repeating these steps and u will have a good chess engine.
+Sadly I will have to change this in the main branch but its okay. It's the price to pay for progress.
