@@ -1,4 +1,5 @@
 #include "evaluation.hpp"
+
 #include "constants.hpp"
 #include "piece-maps.hpp"
 
@@ -18,19 +19,22 @@ int Evaluation::evaluate(const chess::Board &board) {
   auto blackQueens = board.pieces(PieceType::QUEEN, Color::BLACK);
 
   // Count material using the initialized bitboards
-  int whiteMaterial = whitePawns.count() * PAWN_VALUE + whiteKnights.count() * KNIGHT_VALUE +
-                      whiteBishops.count() * BISHOP_VALUE + whiteRooks.count() * ROOK_VALUE +
-                      whiteQueens.count() * QUEEN_VALUE;
+  int whiteMaterial =
+      whitePawns.count() * PAWN_VALUE + whiteKnights.count() * KNIGHT_VALUE +
+      whiteBishops.count() * BISHOP_VALUE + whiteRooks.count() * ROOK_VALUE +
+      whiteQueens.count() * QUEEN_VALUE;
 
-  int blackMaterial = blackPawns.count() * PAWN_VALUE + blackKnights.count() * KNIGHT_VALUE +
-                      blackBishops.count() * BISHOP_VALUE + blackRooks.count() * ROOK_VALUE +
-                      blackQueens.count() * QUEEN_VALUE;
+  int blackMaterial =
+      blackPawns.count() * PAWN_VALUE + blackKnights.count() * KNIGHT_VALUE +
+      blackBishops.count() * BISHOP_VALUE + blackRooks.count() * ROOK_VALUE +
+      blackQueens.count() * QUEEN_VALUE;
 
   eval += whiteMaterial - blackMaterial;
 
   // Better endgame detection based on total material
   int totalMaterial = whiteMaterial + blackMaterial;
-  bool isEndgame = totalMaterial < 2500; // Endgame when less than ~25 points of material total
+  bool isEndgame = totalMaterial <
+                   2500;  // Endgame when less than ~25 points of material total
 
   evaluatePST(board, eval, isEndgame);
 
@@ -40,15 +44,23 @@ int Evaluation::evaluate(const chess::Board &board) {
     evaluateKingEndgameScore(board, eval);
   }
 
-  return eval;
+  // Slight advantage for having bishop pair
+  if (whiteBishops.count() >= 2) {
+    eval += 30;
+  }
+  if (blackBishops.count() >= 2) {
+    eval -= 30;
+  }
+
+  return (board.sideToMove() == Color::WHITE) ? eval : -eval;
 }
 
 // Add values from piece square tables
-void Evaluation::evaluatePST(const chess::Board &board, int &eval, bool isEndgame) {
+void Evaluation::evaluatePST(const chess::Board &board, int &eval,
+                             bool isEndgame) {
   for (int sq = 0; sq < 64; sq++) {
     Piece piece = board.at(Square(sq));
-    if (piece == PieceType::NONE)
-      continue;
+    if (piece == PieceType::NONE) continue;
 
     // std::cout<<sq<<" Actual Index ";
     int index = (piece.color() == Color::WHITE) ? sq : mirrorIndex(sq);
@@ -67,10 +79,12 @@ void Evaluation::evaluatePST(const chess::Board &board, int &eval, bool isEndgam
     } else if (piece == PieceType::QUEEN) {
       squareValue = QUEEN_TABLE[index];
     } else if (piece == PieceType::KING) {
-      squareValue = isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+      squareValue =
+          isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
     }
 
-    // std::cout<<piece.color()<<" "<<piece.type()<<" Index: "<<index<<" Value:
+    // std::cout<<piece.color()<<" "<<piece.type()<<" Index: "<<index<<"
+    // Value:
     // "<<squareValue<<"\n";
 
     eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
@@ -97,91 +111,70 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
       eval += 15 * (blackPawnsOnFileCount - 1);
     }
 
-    // 2. Isolated pawns penalty
-    chess::Bitboard adjacentFiles = 0ULL;
+    // Create masks for adjacent files and passed pawn checks
+    chess::Bitboard adjacentFilesMask = 0ULL;
     if (file > 0)
-      adjacentFiles |= chess::Bitboard(0x0101010101010101ULL << (file - 1));
+      adjacentFilesMask |= chess::Bitboard(0x0101010101010101ULL << (file - 1));
     if (file < 7)
-      adjacentFiles |= chess::Bitboard(0x0101010101010101ULL << (file + 1));
+      adjacentFilesMask |= chess::Bitboard(0x0101010101010101ULL << (file + 1));
 
-    if (whitePawnsOnFileCount > 0 && (whitePawns & adjacentFiles).empty()) {
+    chess::Bitboard passedPawnMask = fileBB | adjacentFilesMask;
+
+    // 2. Isolated pawns penalty
+    if (whitePawnsOnFileCount > 0 && (whitePawns & adjacentFilesMask).empty()) {
       eval -= 15 * whitePawnsOnFileCount;
     }
-    if (blackPawnsOnFileCount > 0 && (blackPawns & adjacentFiles).empty()) {
+    if (blackPawnsOnFileCount > 0 && (blackPawns & adjacentFilesMask).empty()) {
       eval += 15 * blackPawnsOnFileCount;
     }
 
     // 3. Passed pawns bonus
-    while (whitePawnsOnFile) {
-      Square sq = whitePawnsOnFile.pop();
-      if (isPassedPawn(sq, Color::WHITE, blackPawns)) {
-        eval += 15 * (sq.rank() - 1);
+    // White passed pawns
+    chess::Bitboard tempWhitePawns = whitePawnsOnFile;
+    while (tempWhitePawns) {
+      Square sq = tempWhitePawns.pop();
+      int rank = sq.rank();
+      chess::Bitboard rank_mask = 0ULL;
+      if (rank < 7) {
+        rank_mask = ~((1ULL << ((rank + 1) * 8)) - 1);
+      }
+      if ((blackPawns & passedPawnMask & rank_mask).empty()) {
+        eval += 15 * (rank - 1);
       }
     }
 
-    while (blackPawnsOnFile) {
-      Square sq = blackPawnsOnFile.pop();
-      if (isPassedPawn(sq, Color::BLACK, whitePawns)) {
-        eval -= 15 * (6 - sq.rank());
+    // Black passed pawns
+    chess::Bitboard tempBlackPawns = blackPawnsOnFile;
+    while (tempBlackPawns) {
+      Square sq = tempBlackPawns.pop();
+      int rank = sq.rank();
+      chess::Bitboard rank_mask = 0ULL;
+      if (rank > 0) {
+        rank_mask = (1ULL << (rank * 8)) - 1;
+      }
+      if ((whitePawns & passedPawnMask & rank_mask).empty()) {
+        eval -= 15 * (6 - rank);
       }
     }
   }
-}
-
-bool Evaluation::isPassedPawn(Square sq, Color color, const chess::Bitboard &opponentPawns) {
-  int file = sq.file();
-  int rank = sq.rank();
-
-  // Create a bitmask for the files including the pawn's file and adjacent files
-  chess::Bitboard file_mask = chess::Bitboard(0x0101010101010101ULL << file);
-  if (file > 0)
-    file_mask |= chess::Bitboard(0x0101010101010101ULL << (file - 1));
-  if (file < 7)
-    file_mask |= chess::Bitboard(0x0101010101010101ULL << (file + 1));
-
-  // Create a bitmask for the ranks in front of the pawn
-  chess::Bitboard rank_mask = 0ULL;
-  if (color == Color::WHITE) {
-    // Ranks in front of a white pawn (rank + 1 to 7)
-    if (rank < 7)
-      rank_mask = ~((1ULL << ((rank + 1) * 8)) - 1);
-  } else { // BLACK
-    // Ranks in front of a black pawn (rank - 1 to 0)
-    if (rank > 0)
-      rank_mask = (1ULL << (rank * 8)) - 1;
-  }
-
-  // A pawn is passed if there are no opponent pawns in the path in front of it
-  return (opponentPawns & file_mask & rank_mask).empty();
 }
 
 // Calculate King endgame score
-void Evaluation::evaluateKingEndgameScore(const chess::Board &board, int &eval) {
+void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
+                                          int &eval) {
   Square whiteKingSq = board.kingSq(Color::WHITE);
   Square blackKingSq = board.kingSq(Color::BLACK);
 
+  // Reward active king: encourage the king to move towards the center
+  int whiteKingCentrality = KING_END_TABLE[whiteKingSq.index()];
+  int blackKingCentrality = KING_END_TABLE[mirrorIndex(blackKingSq.index())];
+  eval += whiteKingCentrality - blackKingCentrality;
+
+  // Encourage the stronger side's king to attack the weaker king
   int distance = manhattanDistance(whiteKingSq, blackKingSq);
-  eval += (14 - distance) * 6;
-
-  int whiteKingFile = whiteKingSq.file();
-  int whiteKingRank = whiteKingSq.rank();
-
-  int blackKingFile = blackKingSq.file();
-  int blackKingRank = blackKingSq.rank();
-
-  // Higher bonus for corner squares
-  if ((blackKingFile == 0 || blackKingFile == 7) && (blackKingRank == 0 || blackKingRank == 7)) {
-    eval += 100;
-  }
-  if ((whiteKingFile == 0 || whiteKingFile == 7) && (whiteKingRank == 0 || whiteKingRank == 7)) {
-    eval -= 100;
-  }
-
-  // Bonus for being on the edges
-  if (blackKingFile == 0 || blackKingFile == 7 || blackKingRank == 0 || blackKingRank == 7) {
-    eval += 100;
-  }
-  if (whiteKingFile == 0 || whiteKingFile == 7 || whiteKingRank == 0 || whiteKingRank == 7) {
-    eval -= 100;
+  if (eval > 0) {  // White is stronger
+    eval += (14 - distance) * 4;
+  } else {  // Black is stronger
+    eval -= (14 - distance) * 4;
   }
 }
