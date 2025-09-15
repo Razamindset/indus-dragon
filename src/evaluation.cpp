@@ -6,66 +6,70 @@
 int Evaluation::evaluate(const chess::Board &board) {
   int eval = 0;
 
-  // Initialize all bitboards once
-  auto whitePawns = board.pieces(PieceType::PAWN, Color::WHITE);
-  auto blackPawns = board.pieces(PieceType::PAWN, Color::BLACK);
-  auto whiteKnights = board.pieces(PieceType::KNIGHT, Color::WHITE);
-  auto blackKnights = board.pieces(PieceType::KNIGHT, Color::BLACK);
-  auto whiteBishops = board.pieces(PieceType::BISHOP, Color::WHITE);
-  auto blackBishops = board.pieces(PieceType::BISHOP, Color::BLACK);
-  auto whiteRooks = board.pieces(PieceType::ROOK, Color::WHITE);
-  auto blackRooks = board.pieces(PieceType::ROOK, Color::BLACK);
-  auto whiteQueens = board.pieces(PieceType::QUEEN, Color::WHITE);
-  auto blackQueens = board.pieces(PieceType::QUEEN, Color::BLACK);
+  // I actually donot know if this is the best way to do this. I will read some
+  // code from other engines for the best approach
 
-  // Count material using the initialized bitboards
-  int whiteMaterial =
-      whitePawns.count() * PAWN_VALUE + whiteKnights.count() * KNIGHT_VALUE +
-      whiteBishops.count() * BISHOP_VALUE + whiteRooks.count() * ROOK_VALUE +
-      whiteQueens.count() * QUEEN_VALUE;
+  // 1. Create and populate the evaluation context
+  EvalContext ctx{
+      .board = board,
+  };
 
-  int blackMaterial =
-      blackPawns.count() * PAWN_VALUE + blackKnights.count() * KNIGHT_VALUE +
-      blackBishops.count() * BISHOP_VALUE + blackRooks.count() * ROOK_VALUE +
-      blackQueens.count() * QUEEN_VALUE;
+  ctx.whitePawns = board.pieces(PieceType::PAWN, Color::WHITE);
+  ctx.blackPawns = board.pieces(PieceType::PAWN, Color::BLACK);
+  ctx.whiteKnights = board.pieces(PieceType::KNIGHT, Color::WHITE);
+  ctx.blackKnights = board.pieces(PieceType::KNIGHT, Color::BLACK);
+  ctx.whiteBishops = board.pieces(PieceType::BISHOP, Color::WHITE);
+  ctx.blackBishops = board.pieces(PieceType::BISHOP, Color::BLACK);
+  ctx.whiteRooks = board.pieces(PieceType::ROOK, Color::WHITE);
+  ctx.blackRooks = board.pieces(PieceType::ROOK, Color::BLACK);
+  ctx.whiteQueens = board.pieces(PieceType::QUEEN, Color::WHITE);
+  ctx.blackQueens = board.pieces(PieceType::QUEEN, Color::BLACK);
 
-  eval += whiteMaterial - blackMaterial;
+  ctx.whiteMaterial = ctx.whitePawns.count() * PAWN_VALUE +
+                      ctx.whiteKnights.count() * KNIGHT_VALUE +
+                      ctx.whiteBishops.count() * BISHOP_VALUE +
+                      ctx.whiteRooks.count() * ROOK_VALUE +
+                      ctx.whiteQueens.count() * QUEEN_VALUE;
 
-  // Better endgame detection based on total material
-  int totalMaterial = whiteMaterial + blackMaterial;
-  bool isEndgame = totalMaterial <
-                   2500;  // Endgame when less than ~25 points of material total
+  ctx.blackMaterial = ctx.blackPawns.count() * PAWN_VALUE +
+                      ctx.blackKnights.count() * KNIGHT_VALUE +
+                      ctx.blackBishops.count() * BISHOP_VALUE +
+                      ctx.blackRooks.count() * ROOK_VALUE +
+                      ctx.blackQueens.count() * QUEEN_VALUE;
 
-  evaluatePST(board, eval, isEndgame);
+  int totalMaterial = ctx.whiteMaterial + ctx.blackMaterial;
+  ctx.isEndgame = totalMaterial < 2500;
 
-  evaluatePawns(eval, whitePawns, blackPawns);
+  // 2. Run evaluation components
+  eval += ctx.whiteMaterial - ctx.blackMaterial;
 
-  if (isEndgame) {
-    evaluateKingEndgameScore(board, eval);
+  evaluatePST(eval, ctx);
+  evaluatePawns(eval, ctx);
+  evaluateRooks(eval, ctx);
+
+  if (ctx.isEndgame) {
+    evaluateKingEndgameScore(eval, ctx);
   }
 
   // Slight advantage for having bishop pair
-  if (whiteBishops.count() >= 2) {
+  if (ctx.whiteBishops.count() >= 2) {
     eval += 30;
   }
-  if (blackBishops.count() >= 2) {
+  if (ctx.blackBishops.count() >= 2) {
     eval -= 30;
   }
 
+  // 3. Return score relative to side to move
   return (board.sideToMove() == Color::WHITE) ? eval : -eval;
 }
 
 // Add values from piece square tables
-void Evaluation::evaluatePST(const chess::Board &board, int &eval,
-                             bool isEndgame) {
+void Evaluation::evaluatePST(int &eval, const EvalContext &ctx) {
   for (int sq = 0; sq < 64; sq++) {
-    Piece piece = board.at(Square(sq));
+    Piece piece = ctx.board.at(Square(sq));
     if (piece == PieceType::NONE) continue;
 
-    // std::cout<<sq<<" Actual Index ";
     int index = (piece.color() == Color::WHITE) ? sq : mirrorIndex(sq);
-    // std::cout<<index<<" Mirrored Index ";
-
     int squareValue = 0;
 
     if (piece == PieceType::PAWN) {
@@ -80,26 +84,21 @@ void Evaluation::evaluatePST(const chess::Board &board, int &eval,
       squareValue = QUEEN_TABLE[index];
     } else if (piece == PieceType::KING) {
       squareValue =
-          isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
+          ctx.isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
     }
-
-    // std::cout<<piece.color()<<" "<<piece.type()<<" Index: "<<index<<"
-    // Value:
-    // "<<squareValue<<"\n";
 
     eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
   }
 }
 
-void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
-                               const chess::Bitboard &blackPawns) {
+void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
   chess::Bitboard fileBB;
 
   for (int file = 0; file < 8; ++file) {
     fileBB = chess::Bitboard(0x0101010101010101ULL << file);
 
-    chess::Bitboard whitePawnsOnFile = whitePawns & fileBB;
-    chess::Bitboard blackPawnsOnFile = blackPawns & fileBB;
+    chess::Bitboard whitePawnsOnFile = ctx.whitePawns & fileBB;
+    chess::Bitboard blackPawnsOnFile = ctx.blackPawns & fileBB;
     int whitePawnsOnFileCount = whitePawnsOnFile.count();
     int blackPawnsOnFileCount = blackPawnsOnFile.count();
 
@@ -121,10 +120,12 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
     chess::Bitboard passedPawnMask = fileBB | adjacentFilesMask;
 
     // 2. Isolated pawns penalty
-    if (whitePawnsOnFileCount > 0 && (whitePawns & adjacentFilesMask).empty()) {
+    if (whitePawnsOnFileCount > 0 &&
+        (ctx.whitePawns & adjacentFilesMask).empty()) {
       eval -= 15 * whitePawnsOnFileCount;
     }
-    if (blackPawnsOnFileCount > 0 && (blackPawns & adjacentFilesMask).empty()) {
+    if (blackPawnsOnFileCount > 0 &&
+        (ctx.blackPawns & adjacentFilesMask).empty()) {
       eval += 15 * blackPawnsOnFileCount;
     }
 
@@ -138,7 +139,7 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
       if (rank < 7) {
         rank_mask = ~((1ULL << ((rank + 1) * 8)) - 1);
       }
-      if ((blackPawns & passedPawnMask & rank_mask).empty()) {
+      if ((ctx.blackPawns & passedPawnMask & rank_mask).empty()) {
         eval += 15 * (rank - 1);
       }
     }
@@ -152,7 +153,7 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
       if (rank > 0) {
         rank_mask = (1ULL << (rank * 8)) - 1;
       }
-      if ((whitePawns & passedPawnMask & rank_mask).empty()) {
+      if ((ctx.whitePawns & passedPawnMask & rank_mask).empty()) {
         eval -= 15 * (6 - rank);
       }
     }
@@ -160,10 +161,9 @@ void Evaluation::evaluatePawns(int &eval, const chess::Bitboard &whitePawns,
 }
 
 // Calculate King endgame score
-void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
-                                          int &eval) {
-  Square whiteKingSq = board.kingSq(Color::WHITE);
-  Square blackKingSq = board.kingSq(Color::BLACK);
+void Evaluation::evaluateKingEndgameScore(int &eval, const EvalContext &ctx) {
+  Square whiteKingSq = ctx.board.kingSq(Color::WHITE);
+  Square blackKingSq = ctx.board.kingSq(Color::BLACK);
 
   // Reward active king: encourage the king to move towards the center
   int whiteKingCentrality = KING_END_TABLE[whiteKingSq.index()];
@@ -176,5 +176,35 @@ void Evaluation::evaluateKingEndgameScore(const chess::Board &board,
     eval += (14 - distance) * 4;
   } else {  // Black is stronger
     eval -= (14 - distance) * 4;
+  }
+}
+
+void Evaluation::evaluateRooks(int &eval, const EvalContext &ctx) {
+  chess::Bitboard fileBB;
+
+  for (int file = 0; file < 8; ++file) {
+    fileBB = chess::Bitboard(0x0101010101010101ULL << file);
+
+    bool whitePawnsOnFile = !(ctx.whitePawns & fileBB).empty();
+    bool blackPawnsOnFile = !(ctx.blackPawns & fileBB).empty();
+
+    if (!whitePawnsOnFile) {
+      if (!blackPawnsOnFile) {
+        // Open File
+        if (!(ctx.whiteRooks & fileBB).empty()) eval += 15;
+        if (!(ctx.blackRooks & fileBB).empty()) eval -= 15;
+      } else {
+        // Semi-Open File for White
+        if (!(ctx.whiteRooks & fileBB).empty()) eval += 10;
+      }
+    }
+
+    if (!blackPawnsOnFile) {
+      if (whitePawnsOnFile) {
+        // Semi-Open File for Black. Open file for black is already handled
+        // above
+        if (!(ctx.blackRooks & fileBB).empty()) eval -= 10;
+      }
+    }
   }
 }
