@@ -1,8 +1,8 @@
 #include "search.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <conio.h>
+#include <windows.h>
 #else
 #include <poll.h>
 #include <unistd.h>
@@ -10,12 +10,11 @@
 
 #include <fstream>
 
-
 /*
-Check if there is any input waiting to be processed. 
+Check if there is any input waiting to be processed.
 The api is different for windows and unix based systems.
 */
-void Search::uci_input_handler() {
+void Search::communicate() {
 #ifdef _WIN32
   // Windows: check if input is available using _kbhit and _getch
   if (_kbhit()) {
@@ -81,7 +80,7 @@ void Search::searchBestMove() {
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
-    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0);
+    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag) {
@@ -132,9 +131,10 @@ void Search::searchBestMove() {
   logMessage(bestmove_str);
 }
 
-int Search::negamax(int depth, int alpha, int beta, int ply) {
+int Search::negamax(int depth, int alpha, int beta, int ply,
+                    bool is_null = false) {
   if ((positionsSearched & 2047) == 0) {
-    uci_input_handler();
+    communicate();
   }
 
   if (stopSearchFlag) {
@@ -179,6 +179,26 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
     return ttScore;
   }
 
+  // Null move Pruning NMP
+  // Elo: 77.71 +/- 44.19, nElo: 88.07 +/- 48.15 for 200 games
+  if (depth > 3 && !board.inCheck() &&
+      board.hasNonPawnMaterial(board.sideToMove()) &&
+      depth != MAX_SEARCH_DEPTH &&
+      !is_null) {  // Don't do null move after null move
+    board.makeNullMove();
+    int score =
+        -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);  // R=3 reduction
+    board.unmakeNullMove();
+
+    if (stopSearchFlag) {
+      return 0;  // Check stop flag after recursive call
+    }
+
+    if (score >= beta) {
+      return beta;
+    }
+  }
+
   Movelist moves;
   movegen::legalmoves(moves, board);
 
@@ -191,8 +211,13 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
     Move move = moves[i];
     board.makeMove(move);
 
-    int eval = -negamax(depth - 1, -beta, -alpha, ply + 1);
+    int eval = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
     board.unmakeMove(move);
+
+    // If the search was haulted the score cannot be used, neither the move
+    if (stopSearchFlag) {
+      return 0;
+    }
 
     if (eval > bestScore) {
       bestScore = eval;
@@ -212,9 +237,10 @@ int Search::negamax(int depth, int alpha, int beta, int ply) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
 
-        // History score
+        // Add history with aging/scaling
+        int bonus = depth * depth;
         historyTable[board.sideToMove()][move.from().index()]
-                    [move.to().index()] = depth * depth;
+                    [move.to().index()] = bonus;
       }
       tt_helper.storeTT(boardhash, depth, beta, TTEntryType::LOWER, bestMove,
                         ply);
@@ -289,7 +315,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, int ply) {
   if ((positionsSearched & 2047) == 0) {
-    uci_input_handler();
+    communicate();
   }
 
   if (stopSearchFlag) {
@@ -372,9 +398,7 @@ int Search::getPieceValue(Piece piece) {
   }
 }
 
-int Search::evaluate() {
- return evaluator.evaluate(board);
-}
+int Search::evaluate() { return evaluator.evaluate(board); }
 
 int Search::piece_to_nnue(chess::Piece piece) {
   static const int p_map[] = {6, 5, 4, 3, 2, 1};

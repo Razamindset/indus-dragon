@@ -26,7 +26,7 @@ class Search {
 
   void toggleLogs() { storeLogs = !storeLogs; }
 
-  void uci_input_handler();
+  void communicate();
 
  private:
   Board &board;
@@ -51,7 +51,7 @@ class Search {
   // Search
   std::vector<std::vector<Move>> pvTable;
 
-  int negamax(int depth, int alpha, int beta, int ply);
+  int negamax(int depth, int alpha, int beta, int ply, bool is_null);
 
   int quiescenceSearch(int alpha, int beta, int ply);
 
