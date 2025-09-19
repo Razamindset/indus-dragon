@@ -186,12 +186,11 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
       depth != MAX_SEARCH_DEPTH &&
       !is_null) {  // Don't do null move after null move
     board.makeNullMove();
-    int score =
-        -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);  // R=3 reduction
+    int score = -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);
     board.unmakeNullMove();
 
     if (stopSearchFlag) {
-      return 0;  // Check stop flag after recursive call
+      return 0;
     }
 
     if (score >= beta) {
@@ -212,6 +211,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     board.makeMove(move);
 
     int eval = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
+
     board.unmakeMove(move);
 
     // If the search was haulted the score cannot be used, neither the move
@@ -399,17 +399,6 @@ int Search::getPieceValue(Piece piece) {
 }
 
 int Search::evaluate() { return evaluator.evaluate(board); }
-
-int Search::piece_to_nnue(chess::Piece piece) {
-  static const int p_map[] = {6, 5, 4, 3, 2, 1};
-  int p_type = static_cast<int>(piece.type().internal());
-  if (p_type > 5) return 0;
-  int nnue_p = p_map[p_type];
-  if (piece.color() == chess::Color::BLACK) {
-    nnue_p += 6;
-  }
-  return nnue_p;
-}
 
 bool Search::isGameOver(const chess::Board &board) {
   auto result = board.isGameOver();

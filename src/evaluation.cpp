@@ -59,6 +59,13 @@ int Evaluation::evaluate(const chess::Board &board) {
     eval -= 30;
   }
 
+  // Todos
+  // 1. King safety Pawn sheilds etc
+  // 2. Mobility Score.
+  // 3. Tappered evaluations
+  // 4. Center control
+  // 5. Rooks behind passed pawns.
+
   // 3. Return score relative to side to move
   return (board.sideToMove() == Color::WHITE) ? eval : -eval;
 }
