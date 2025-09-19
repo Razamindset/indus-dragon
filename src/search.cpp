@@ -179,12 +179,10 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     return ttScore;
   }
 
-  // Null move Pruning NMP
-  // Elo: 77.71 +/- 44.19, nElo: 88.07 +/- 48.15 for 200 games
+  // Null move Pruning NMP. Elo: 77.71 +- 30
   if (depth > 3 && !board.inCheck() &&
       board.hasNonPawnMaterial(board.sideToMove()) &&
-      depth != MAX_SEARCH_DEPTH &&
-      !is_null) {  // Don't do null move after null move
+      depth != MAX_SEARCH_DEPTH && !is_null) {
     board.makeNullMove();
     int score = -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);
     board.unmakeNullMove();

@@ -18,10 +18,6 @@ class Engine {
 
   void makeMove(std::string move);
 
-  void getBestMove();
-
-  void stopSearch();
-
   void uci_loop();
 
   void handle_stop();

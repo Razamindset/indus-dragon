@@ -6,14 +6,17 @@ void Engine::printBoard() { std::cout << board; }
 
 void Engine::setPosition(const std::string &fen) { board.setFen(fen); }
 
-void Engine::initilizeEngine() { board = chess::Board(); }
+void Engine::initilizeEngine() {
+  board = chess::Board();
+  tt_helper.clear_table();
+}
 
 void Engine::makeMove(std::string move) {
   Move parsedMove = uci::uciToMove(board, move);
   board.makeMove(parsedMove);
 }
 
-void Engine::handle_stop() { stopSearch(); }
+void Engine::handle_stop() { search.stopSearch(); }
 
 void Engine::handle_go(std::istringstream &iss) {
   handle_stop();
@@ -132,7 +135,6 @@ void Engine::uci_loop() {
     } else if (token == "ucinewgame") {
       handle_stop();  // Stop any ongoing search before reinitializing
       initilizeEngine();
-      tt_helper.clear_table();
     } else if (token == "togglelogs") {
       search.toggleLogs();
     } else if (token == "ttstats") {
@@ -142,7 +144,3 @@ void Engine::uci_loop() {
     }
   }
 }
-
-void Engine::getBestMove() { search.searchBestMove(); }
-
-void Engine::stopSearch() { search.stopSearch(); }
