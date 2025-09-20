@@ -1,7 +1,5 @@
 #pragma once
 
-#include <climits>
-
 constexpr int MATE_SCORE = 1000000;
 constexpr int MATE_THRESHHOLD = 100;
 constexpr int DRAW_SCORE = 0;
@@ -14,10 +12,9 @@ constexpr int DRAW_SCORE = 0;
 constexpr size_t MAX_TT_ENTRIES = 1 << 21;
 
 // For stop search Flag
-constexpr int INCOMPLETE_SEARCH = INT_MIN;
 
 // MAX search depth
-constexpr int MAX_SEARCH_DEPTH = 24;
+constexpr int MAX_SEARCH_DEPTH = 100;
 
 // Piece values in centipawns
 constexpr int PAWN_VALUE = 100;

@@ -20,8 +20,6 @@ class Engine {
 
   void uci_loop();
 
-  void handle_stop();
-
   void handle_go(std::istringstream &iss);
 
   void handle_positon(std::istringstream &iss);

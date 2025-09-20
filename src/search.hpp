@@ -35,7 +35,7 @@ class Search {
 
   Evaluation evaluator;
 
-  bool stopSearchFlag{false};
+  bool stopSearchFlag = false;
 
   long long positionsSearched = 0;
 

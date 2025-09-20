@@ -16,16 +16,14 @@ The api is different for windows and unix based systems.
 */
 void Search::communicate() {
 #ifdef _WIN32
-  // Windows: check if input is available using _kbhit and _getch
   if (_kbhit()) {
     std::string line;
     std::getline(std::cin, line);
     if (line == "stop") {
       stopSearchFlag = true;
+      logMessage("stop");
     } else if (line == "quit") {
-      tt_helper.clear_table();
-      clearKiller();
-      clearHistory();
+      logMessage("quit");
       exit(0);
     }
   }
@@ -39,10 +37,9 @@ void Search::communicate() {
     std::getline(std::cin, line);
     if (line == "stop") {
       stopSearchFlag = true;
+      logMessage("stop");
     } else if (line == "quit") {
-      tt_helper.clear_table();
-      clearKiller();
-      clearHistory();
+      logMessage("quit");
       exit(0);
     }
   }
@@ -128,16 +125,15 @@ void Search::searchBestMove() {
 
 int Search::negamax(int depth, int alpha, int beta, int ply,
                     bool is_null = false) {
+  if (stopSearchFlag || checkHardTimeLimit()) {
+    return 0;
+  }
+
   if ((positionsSearched & 2047) == 0) {
     communicate();
-  }
-
-  if (stopSearchFlag) {
-    return 0;
-  }
-
-  if (checkHardTimeLimit()) {
-    return 0;
+    if (stopSearchFlag) {
+      return 0;
+    }
   }
 
   pvTable[ply].clear();
@@ -152,7 +148,13 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   }
 
   if (depth == 0) {
-    return quiescenceSearch(alpha, beta, ply);
+    // Check extensions. Use if qsearch is not explicitly making sure that
+    // checks are handled
+    if (board.inCheck() && depth < MAX_SEARCH_DEPTH) {
+      depth++;
+    } else {
+      return quiescenceSearch(alpha, beta, ply);
+    }
   }
 
   if (board.isRepetition(1)) {
@@ -307,6 +309,10 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
 
 /* Reach a stable quiet pos before evaluating */
 int Search::quiescenceSearch(int alpha, int beta, int ply) {
+  if (checkHardTimeLimit()) {
+    return 0;
+  }
+
   if ((positionsSearched & 2047) == 0) {
     communicate();
   }
