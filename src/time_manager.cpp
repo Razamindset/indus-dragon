@@ -96,7 +96,7 @@ void Search::setTimevalues(int wtime, int btime, int winc, int binc,
   }
 }
 
-bool Search::manageTime(long long elapsed_time) {
+bool Search::manageTime(const long long elapsed_time) {
   if (!time_controls_enabled) {
     return false;
   }
@@ -114,14 +114,16 @@ bool Search::manageTime(long long elapsed_time) {
 
 bool Search::checkHardTimeLimit() {
   if (time_controls_enabled) {
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - search_start_time)
-                            .count();
-    if (elapsed_time >= hard_time_limit) {
+    if (elapsedTime() >= hard_time_limit) {
       stopSearchFlag = true;
       return true;
     }
   }
   return false;
+}
+
+long long Search::elapsedTime(){
+  auto current = std::chrono::steady_clock::now();
+  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current - search_start_time).count();
+  return elapsed_time;
 }

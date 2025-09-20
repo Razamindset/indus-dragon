@@ -98,12 +98,7 @@ void Search::searchBestMove() {
       last_iteration_best_move = bestMove;
     }
 
-    // Elapsed Time and NPS
-    auto current_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            current_time - search_start_time)
-                            .count();
-
+    long long elapsed_time = elapsedTime();
     long long nps = 0;
 
     // Calculate nodes per second as (nodes / milliseconds) * 1000

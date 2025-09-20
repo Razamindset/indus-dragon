@@ -59,8 +59,6 @@ class Search {
 
   int evaluate();
 
-  int piece_to_nnue(chess::Piece piece);
-
   bool isGameOver(const chess::Board &board);
 
   GameResultReason getGameOverReason(const chess::Board &board);
@@ -83,7 +81,7 @@ class Search {
 
   std::chrono::steady_clock::time_point search_start_time;
 
-  bool manageTime(long long elapsed_time);
+  bool manageTime(const long long elapsed_time);
 
   bool checkHardTimeLimit();
 
@@ -92,6 +90,8 @@ class Search {
   int estimateMovesToGo(const chess::Board &board);
 
   int count_pieces(const chess::Board &board);
+
+  long long elapsedTime();
 
   long long wtime = 0;
   long long btime = 0;
