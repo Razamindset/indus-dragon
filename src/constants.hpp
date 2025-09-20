@@ -26,6 +26,8 @@ constexpr int BISHOP_VALUE = 320;
 constexpr int ROOK_VALUE = 500;
 constexpr int QUEEN_VALUE = 900;
 
+constexpr int TEMPO_BONUS = 15;  // ~0.15 pawns
+
 // Time related
 static constexpr long long INFINITE_TIME = 1000000000LL;  // 1 billion ms
 static constexpr double SOFT_TIME_FACTOR = 0.4;

@@ -66,6 +66,12 @@ int Evaluation::evaluate(const chess::Board &board) {
   // 4. Center control
   // 5. Rooks behind passed pawns.
 
+  // Small Tempo bonus
+  if (board.sideToMove() == Color::WHITE)
+    eval += TEMPO_BONUS;
+  else
+    eval -= TEMPO_BONUS;
+
   // 3. Return score relative to side to move
   return (board.sideToMove() == Color::WHITE) ? eval : -eval;
 }

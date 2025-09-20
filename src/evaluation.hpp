@@ -19,11 +19,11 @@ struct EvalContext {
 };
 
 class Evaluation {
-public:
-  Evaluation(){};
+ public:
+  Evaluation() {};
   int evaluate(const Board &board);
 
-private:
+ private:
   void evaluatePST(int &eval, const EvalContext &ctx);
   void evaluatePawns(int &eval, const EvalContext &ctx);
   void evaluateRooks(int &eval, const EvalContext &ctx);
