@@ -2,7 +2,7 @@
 
 #include "search.hpp"
 
-int Search::count_pieces(const chess::Board &board) {
+int Search::countPieces(const chess::Board &board) {
   return board.pieces(chess::PieceType::PAWN, chess::Color::WHITE).count() +
          board.pieces(chess::PieceType::PAWN, chess::Color::BLACK).count() +
          board.pieces(chess::PieceType::KNIGHT, chess::Color::WHITE).count() +
@@ -17,15 +17,15 @@ int Search::count_pieces(const chess::Board &board) {
 void Search::calculateSearchTime() {
   // infinite search
   if (wtime <= 0 && btime <= 0 && movetime <= 0) {
-    soft_time_limit = INFINITE_TIME;
-    hard_time_limit = INFINITE_TIME;
+    softTime = INFINITE_TIME;
+    hardTime = INFINITE_TIME;
     return;
   }
 
   // Movetime given
   if (movetime > 0) {
-    soft_time_limit = movetime;
-    hard_time_limit = movetime;
+    softTime = movetime;
+    hardTime = movetime;
     return;
   }
 
@@ -39,7 +39,7 @@ void Search::calculateSearchTime() {
 
   // Very low on time
   if (remaining_time < SAFETY_BUFFER) {
-    soft_time_limit = hard_time_limit = MIN_SEARCH_TIME;
+    softTime = hardTime = MIN_SEARCH_TIME;
     return;
   }
 
@@ -56,13 +56,13 @@ void Search::calculateSearchTime() {
 
   // Don’t exceed safe bound
   long long max_time = remaining_time - SAFETY_BUFFER;
-  soft_time_limit = std::min(soft_time, max_time);
-  hard_time_limit = std::min(hard_time, max_time);
+  softTime = std::min(soft_time, max_time);
+  hardTime = std::min(hard_time, max_time);
 }
 
 // Estimate moves remaining based on game phase
 int Search::estimateMovesToGo(const chess::Board &board) {
-  int piece_count = count_pieces(board);
+  int piece_count = countPieces(board);
 
   int full_moves = board.fullMoveNumber();
 
@@ -90,21 +90,21 @@ void Search::setTimevalues(int wtime, int btime, int winc, int binc,
   this->movetime = static_cast<long long>(movetime);
 
   if (this->wtime <= 0 && this->btime <= 0 && this->movetime <= 0) {
-    this->time_controls_enabled = false;
+    this->timeEnabled = false;
   } else {
-    this->time_controls_enabled = true;
+    this->timeEnabled = true;
   }
 }
 
-bool Search::manageTime(const long long elapsed_time) {
-  if (!time_controls_enabled) {
+bool Search::manageTime(const long long elapsedTime) {
+  if (!timeEnabled) {
     return false;
   }
 
-  if (elapsed_time >= soft_time_limit) {
-    if (best_move_changes >= 2 && elapsed_time < hard_time_limit / 3) {
-      soft_time_limit += soft_time_limit * 0.3;
-      best_move_changes = 0;
+  if (elapsedTime >= softTime) {
+    if (moveChanges >= 2 && elapsedTime < hardTime / 3) {
+      softTime += softTime * 0.3;
+      moveChanges = 0;
       return false;  // Continue searching
     }
     return true;  // Stop searching
@@ -113,8 +113,8 @@ bool Search::manageTime(const long long elapsed_time) {
 }
 
 bool Search::checkHardTimeLimit() {
-  if (time_controls_enabled) {
-    if (elapsedTime() >= hard_time_limit) {
+  if (timeEnabled) {
+    if (getElapsedTime() >= hardTime) {
       stopSearchFlag = true;
       return true;
     }
@@ -122,8 +122,10 @@ bool Search::checkHardTimeLimit() {
   return false;
 }
 
-long long Search::elapsedTime(){
+long long Search::getElapsedTime() {
   auto current = std::chrono::steady_clock::now();
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current - search_start_time).count();
-  return elapsed_time;
+  auto elapsedTime =
+      std::chrono::duration_cast<std::chrono::milliseconds>(current - startTime)
+          .count();
+  return elapsedTime;
 }

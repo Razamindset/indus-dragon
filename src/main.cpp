@@ -5,7 +5,7 @@ int main() {
 
   engine.initilizeEngine();
 
-  engine.uci_loop();
+  engine.uciLoop();
 
   return 0;
 }

@@ -64,11 +64,11 @@ void Search::searchBestMove() {
   clearKiller();
   clearHistory();
 
-  search_start_time = std::chrono::steady_clock::now();
+  startTime = std::chrono::steady_clock::now();
 
   positionsSearched = 0;
 
-  best_move_changes = 0;
+  moveChanges = 0;
 
   Move last_iteration_best_move = Move::NULL_MOVE;
 
@@ -77,7 +77,7 @@ void Search::searchBestMove() {
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
-    int bestEval = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
+    int bestScore = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
 
     // If the hard time limit was hit, stop searching immediately.
     if (stopSearchFlag) {
@@ -88,26 +88,26 @@ void Search::searchBestMove() {
     if (!currentBestLine.empty()) {
       if (last_iteration_best_move != Move::NULL_MOVE &&
           currentBestLine.front() != last_iteration_best_move) {
-        best_move_changes++;
+        moveChanges++;
       }
       bestMove = currentBestLine.front();
       bestLine = currentBestLine;
       last_iteration_best_move = bestMove;
     }
 
-    long long elapsed_time = elapsedTime();
+    long long elapsedTime = getElapsedTime();
     long long nps = 0;
 
     // Calculate nodes per second as (nodes / milliseconds) * 1000
-    if (elapsed_time > 0) {
-      nps = (positionsSearched * 1000) / elapsed_time;
+    if (elapsedTime > 0) {
+      nps = (positionsSearched * 1000) / elapsedTime;
     }
 
     // UCI output
-    printInfoLine(bestEval, bestLine, currentDepth, nps, elapsed_time);
+    printInfoLine(bestScore, bestLine, currentDepth, nps, elapsedTime);
 
     // Check if we should stop.
-    if (manageTime(elapsed_time)) {
+    if (manageTime(elapsedTime)) {
       break;
     }
   }
@@ -205,7 +205,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     Move move = moves[i];
     board.makeMove(move);
 
-    int eval = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
+    int score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
 
     board.unmakeMove(move);
 
@@ -214,8 +214,8 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
       return 0;
     }
 
-    if (eval > bestScore) {
-      bestScore = eval;
+    if (score > bestScore) {
+      bestScore = score;
       bestMove = move;
 
       pvTable[ply].clear();
@@ -232,14 +232,14 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
 
-        // Add history with aging/scaling
+        // Add history
         int bonus = depth * depth;
         historyTable[board.sideToMove()][move.from().index()]
                     [move.to().index()] = bonus;
       }
       tt_helper.storeTT(boardhash, depth, beta, TTEntryType::LOWER, bestMove,
                         ply);
-      break;
+      return score;  // beta cuttof
     }
   }
 
@@ -409,25 +409,25 @@ GameResultReason Search::getGameOverReason(const chess::Board &board) {
   return result.first;
 }
 
-void Search::printInfoLine(int bestEval, std::vector<Move> bestLine,
+void Search::printInfoLine(int bestScore, std::vector<Move> bestLine,
                            int currentDepth, long long nps,
-                           long long elapsed_time) {
+                           long long elapsedTime) {
   std::stringstream info_ss;
   info_ss << "info depth " << currentDepth << " nodes " << positionsSearched
-          << " time " << elapsed_time << " nps " << nps << " score ";
+          << " time " << elapsedTime << " nps " << nps << " score ";
 
-  if (std::abs(bestEval) > (MATE_SCORE - MATE_THRESHHOLD)) {
+  if (std::abs(bestScore) > (MATE_SCORE - MATE_THRESHHOLD)) {
     int movesToMate;
-    if (bestEval > 0) {  // White is mating
-      movesToMate = MATE_SCORE - bestEval;
+    if (bestScore > 0) {  // White is mating
+      movesToMate = MATE_SCORE - bestScore;
     } else {
-      movesToMate = MATE_SCORE + bestEval;
+      movesToMate = MATE_SCORE + bestScore;
     }
     int fullMovesToMate = (movesToMate + 1) / 2;
-    info_ss << "mate " << (bestEval > 0 ? fullMovesToMate : -fullMovesToMate)
+    info_ss << "mate " << (bestScore > 0 ? fullMovesToMate : -fullMovesToMate)
             << " pv ";
   } else {
-    info_ss << "cp " << bestEval << " pv ";
+    info_ss << "cp " << bestScore << " pv ";
   }
 
   for (const auto &move : bestLine) {

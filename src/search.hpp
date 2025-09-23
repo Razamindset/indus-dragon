@@ -66,22 +66,22 @@ class Search {
   int getPieceValue(Piece piece);
 
   void printInfoLine(int eval, std::vector<Move> pv, int currentDepth,
-                     long long nps, long long elapsed_time);
+                     long long nps, long long elapsedTime);
 
   bool storeLogs = false;
 
   // Time management
-  bool time_controls_enabled = false;
+  bool timeEnabled = false;
 
-  long long soft_time_limit = 0;
+  long long softTime = 0;
 
-  long long hard_time_limit = 0;
+  long long hardTime = 0;
 
-  int best_move_changes = 0;
+  int moveChanges = 0;
 
-  std::chrono::steady_clock::time_point search_start_time;
+  std::chrono::steady_clock::time_point startTime;
 
-  bool manageTime(const long long elapsed_time);
+  bool manageTime(const long long elapsedTime);
 
   bool checkHardTimeLimit();
 
@@ -89,9 +89,9 @@ class Search {
 
   int estimateMovesToGo(const chess::Board &board);
 
-  int count_pieces(const chess::Board &board);
+  int countPieces(const chess::Board &board);
 
-  long long elapsedTime();
+  long long getElapsedTime();
 
   long long wtime = 0;
   long long btime = 0;

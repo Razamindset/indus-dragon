@@ -4,7 +4,7 @@
 #include "piece-maps.hpp"
 
 int Evaluation::evaluate(const chess::Board &board) {
-  int eval = 0;
+  int score = 0;
 
   // I actually donot know if this is the best way to do this. I will read some
   // code from other engines for the best approach
@@ -41,22 +41,22 @@ int Evaluation::evaluate(const chess::Board &board) {
   ctx.isEndgame = totalMaterial < 2500;
 
   // 2. Run evaluation components
-  eval += ctx.whiteMaterial - ctx.blackMaterial;
+  score += ctx.whiteMaterial - ctx.blackMaterial;
 
-  evaluatePST(eval, ctx);
-  evaluatePawns(eval, ctx);
-  evaluateRooks(eval, ctx);
+  evaluatePST(score, ctx);
+  evaluatePawns(score, ctx);
+  evaluateRooks(score, ctx);
 
   if (ctx.isEndgame) {
-    evaluateKingEndgameScore(eval, ctx);
+    evaluateKingEndgameScore(score, ctx);
   }
 
   // Slight advantage for having bishop pair
   if (ctx.whiteBishops.count() >= 2) {
-    eval += 30;
+    score += 30;
   }
   if (ctx.blackBishops.count() >= 2) {
-    eval -= 30;
+    score -= 30;
   }
 
   // Todos
@@ -68,16 +68,16 @@ int Evaluation::evaluate(const chess::Board &board) {
 
   // Small Tempo bonus
   if (board.sideToMove() == Color::WHITE)
-    eval += TEMPO_BONUS;
+    score += TEMPO_BONUS;
   else
-    eval -= TEMPO_BONUS;
+    score -= TEMPO_BONUS;
 
   // 3. Return score relative to side to move
-  return (board.sideToMove() == Color::WHITE) ? eval : -eval;
+  return (board.sideToMove() == Color::WHITE) ? score : -score;
 }
 
 // Add values from piece square tables
-void Evaluation::evaluatePST(int &eval, const EvalContext &ctx) {
+void Evaluation::evaluatePST(int &score, const EvalContext &ctx) {
   for (int sq = 0; sq < 64; sq++) {
     Piece piece = ctx.board.at(Square(sq));
     if (piece == PieceType::NONE) continue;
@@ -100,11 +100,11 @@ void Evaluation::evaluatePST(int &eval, const EvalContext &ctx) {
           ctx.isEndgame ? KING_END_TABLE[index] : KING_MIDDLE_TABLE[index];
     }
 
-    eval += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
+    score += (piece.color() == Color::WHITE) ? squareValue : -squareValue;
   }
 }
 
-void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
+void Evaluation::evaluatePawns(int &score, const EvalContext &ctx) {
   chess::Bitboard fileBB;
 
   for (int file = 0; file < 8; ++file) {
@@ -117,10 +117,10 @@ void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
 
     // 1. Doubled pawns penalty
     if (whitePawnsOnFileCount > 1) {
-      eval -= 15 * (whitePawnsOnFileCount - 1);
+      score -= 15 * (whitePawnsOnFileCount - 1);
     }
     if (blackPawnsOnFileCount > 1) {
-      eval += 15 * (blackPawnsOnFileCount - 1);
+      score += 15 * (blackPawnsOnFileCount - 1);
     }
 
     // Create masks for adjacent files and passed pawn checks
@@ -135,11 +135,11 @@ void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
     // 2. Isolated pawns penalty
     if (whitePawnsOnFileCount > 0 &&
         (ctx.whitePawns & adjacentFilesMask).empty()) {
-      eval -= 15 * whitePawnsOnFileCount;
+      score -= 15 * whitePawnsOnFileCount;
     }
     if (blackPawnsOnFileCount > 0 &&
         (ctx.blackPawns & adjacentFilesMask).empty()) {
-      eval += 15 * blackPawnsOnFileCount;
+      score += 15 * blackPawnsOnFileCount;
     }
 
     // 3. Passed pawns bonus
@@ -153,7 +153,7 @@ void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
         rank_mask = ~((1ULL << ((rank + 1) * 8)) - 1);
       }
       if ((ctx.blackPawns & passedPawnMask & rank_mask).empty()) {
-        eval += 15 * (rank - 1);
+        score += 15 * (rank - 1);
       }
     }
 
@@ -167,32 +167,32 @@ void Evaluation::evaluatePawns(int &eval, const EvalContext &ctx) {
         rank_mask = (1ULL << (rank * 8)) - 1;
       }
       if ((ctx.whitePawns & passedPawnMask & rank_mask).empty()) {
-        eval -= 15 * (6 - rank);
+        score -= 15 * (6 - rank);
       }
     }
   }
 }
 
 // Calculate King endgame score
-void Evaluation::evaluateKingEndgameScore(int &eval, const EvalContext &ctx) {
+void Evaluation::evaluateKingEndgameScore(int &score, const EvalContext &ctx) {
   Square whiteKingSq = ctx.board.kingSq(Color::WHITE);
   Square blackKingSq = ctx.board.kingSq(Color::BLACK);
 
   // Reward active king: encourage the king to move towards the center
   int whiteKingCentrality = KING_END_TABLE[whiteKingSq.index()];
   int blackKingCentrality = KING_END_TABLE[mirrorIndex(blackKingSq.index())];
-  eval += whiteKingCentrality - blackKingCentrality;
+  score += whiteKingCentrality - blackKingCentrality;
 
   // Encourage the stronger side's king to attack the weaker king
   int distance = manhattanDistance(whiteKingSq, blackKingSq);
-  if (eval > 0) {  // White is stronger
-    eval += (14 - distance) * 4;
+  if (score > 0) {  // White is stronger
+    score += (14 - distance) * 4;
   } else {  // Black is stronger
-    eval -= (14 - distance) * 4;
+    score -= (14 - distance) * 4;
   }
 }
 
-void Evaluation::evaluateRooks(int &eval, const EvalContext &ctx) {
+void Evaluation::evaluateRooks(int &score, const EvalContext &ctx) {
   chess::Bitboard fileBB;
 
   for (int file = 0; file < 8; ++file) {
@@ -204,11 +204,11 @@ void Evaluation::evaluateRooks(int &eval, const EvalContext &ctx) {
     if (!whitePawnsOnFile) {
       if (!blackPawnsOnFile) {
         // Open File
-        if (!(ctx.whiteRooks & fileBB).empty()) eval += 15;
-        if (!(ctx.blackRooks & fileBB).empty()) eval -= 15;
+        if (!(ctx.whiteRooks & fileBB).empty()) score += 15;
+        if (!(ctx.blackRooks & fileBB).empty()) score -= 15;
       } else {
         // Semi-Open File for White
-        if (!(ctx.whiteRooks & fileBB).empty()) eval += 10;
+        if (!(ctx.whiteRooks & fileBB).empty()) score += 10;
       }
     }
 
@@ -216,7 +216,7 @@ void Evaluation::evaluateRooks(int &eval, const EvalContext &ctx) {
       if (whitePawnsOnFile) {
         // Semi-Open File for Black. Open file for black is already handled
         // above
-        if (!(ctx.blackRooks & fileBB).empty()) eval -= 10;
+        if (!(ctx.blackRooks & fileBB).empty()) score -= 10;
       }
     }
   }

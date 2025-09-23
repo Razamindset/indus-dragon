@@ -16,7 +16,7 @@ void Engine::makeMove(std::string move) {
   board.makeMove(parsedMove);
 }
 
-void Engine::handle_go(std::istringstream &iss) {
+void Engine::handleGo(std::istringstream &iss) {
   int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
 
   std::string token;
@@ -50,7 +50,7 @@ void Engine::handle_go(std::istringstream &iss) {
   search.searchBestMove();
 }
 
-void Engine::handle_positon(std::istringstream &iss) {
+void Engine::handleFen(std::istringstream &iss) {
   std::string token;
   iss >> token;
 
@@ -89,7 +89,7 @@ void Engine::handle_positon(std::istringstream &iss) {
   }
 }
 
-void Engine::uci_loop() {
+void Engine::uciLoop() {
   /*
   This loop will be in action while there is no search ongoing.
   When we are given a go command we call the search on the same thread.
@@ -129,7 +129,7 @@ void Engine::uci_loop() {
       fflush(stdout);
 
     } else if (token == "position") {
-      handle_positon(iss);
+      handleFen(iss);
     } else if (token == "d") {
       printBoard();
     } else if (token == "quit") {
@@ -141,7 +141,7 @@ void Engine::uci_loop() {
     } else if (token == "ttstats") {
       tt_helper.printTTStats();
     } else if (token == "go") {
-      handle_go(iss);
+      handleGo(iss);
     }
   }
 }

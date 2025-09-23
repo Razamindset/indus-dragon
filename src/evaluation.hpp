@@ -24,10 +24,10 @@ class Evaluation {
   int evaluate(const Board &board);
 
  private:
-  void evaluatePST(int &eval, const EvalContext &ctx);
-  void evaluatePawns(int &eval, const EvalContext &ctx);
-  void evaluateRooks(int &eval, const EvalContext &ctx);
-  void evaluateKingEndgameScore(int &eval, const EvalContext &ctx);
+  void evaluatePST(int &score, const EvalContext &ctx);
+  void evaluatePawns(int &score, const EvalContext &ctx);
+  void evaluateRooks(int &score, const EvalContext &ctx);
+  void evaluateKingEndgameScore(int &score, const EvalContext &ctx);
   int manhattanDistance(Square s1, Square s2) {
     return std::abs(s1.file() - s2.file()) + std::abs(s1.rank() - s2.rank());
   }
