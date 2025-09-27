@@ -237,8 +237,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
         historyTable[board.sideToMove()][move.from().index()]
                     [move.to().index()] = bonus;
       }
-      tt_helper.storeTT(boardhash, depth, beta, TTEntryType::LOWER, bestMove,
-                        ply);
+      tt_helper.storeTT(boardhash, depth, score, TTEntryType::LOWER, move, ply);
       return score;  // beta cuttof
     }
   }
