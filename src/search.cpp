@@ -153,7 +153,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     if (board.inCheck() && depth < MAX_SEARCH_DEPTH) {
       depth++;
     } else {
-      return quiescenceSearch(alpha, beta, ply);
+      return qsearch(alpha, beta, ply);
     }
   }
 
@@ -190,6 +190,20 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
 
     if (score >= beta) {
       return beta;
+    }
+  }
+
+  // Static Null Move Pruning
+  // Only applies at shallow depths
+  // Conditions: not in check, not PV node, depth small, and not close to mate
+  // score.
+  if (depth <= 3 && !board.inCheck() && alpha < MATE_SCORE - 1000) {
+    int staticEval = evaluate();
+
+    int margin = 120 * depth;
+
+    if (staticEval - margin >= beta) {
+      return beta;  // Fail high, Hopeless position
     }
   }
 
@@ -307,7 +321,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
 }
 
 /* Reach a stable quiet pos before evaluating */
-int Search::quiescenceSearch(int alpha, int beta, int ply) {
+int Search::qsearch(int alpha, int beta, int ply) {
   if (checkHardTimeLimit()) {
     return 0;
   }
@@ -349,7 +363,7 @@ int Search::quiescenceSearch(int alpha, int beta, int ply) {
 
   for (Move move : moves) {
     board.makeMove(move);
-    int score = -quiescenceSearch(-beta, -alpha, ply + 1);
+    int score = -qsearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
 
     alpha = std::max(alpha, score);

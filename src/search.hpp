@@ -53,7 +53,7 @@ class Search {
 
   int negamax(int depth, int alpha, int beta, int ply, bool is_null);
 
-  int quiescenceSearch(int alpha, int beta, int ply);
+  int qsearch(int alpha, int beta, int ply);
 
   void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
 
