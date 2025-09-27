@@ -1,16 +1,11 @@
-#include <fstream>
-
 #include "engine.hpp"
-#include "nnue/nnue.h"
 
 int main() {
-  nnue_init("nn-04cf2b4ed1da.nnue");
-
   Engine engine;
 
   engine.initilizeEngine();
 
-  engine.uci_loop();
+  engine.uciLoop();
 
   return 0;
 }

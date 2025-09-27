@@ -1,6 +1,0 @@
-# .clang-format
-#
-# Documentation: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
-#
-# Based on Google's C++ style guide.
-BasedOnStyle: Google
