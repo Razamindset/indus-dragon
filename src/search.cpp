@@ -8,6 +8,7 @@
 #include <unistd.h>
 #endif
 
+#include <cmath>
 #include <fstream>
 
 /*
@@ -219,7 +220,23 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     Move move = moves[i];
     board.makeMove(move);
 
-    int score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
+    int score;
+
+    // Late Move Reductions
+    if (i < 3 || depth < 3) {
+      // Search first 3 moves with full depth
+      score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
+    } else {
+      // Reduce the dpeth
+      int reduction = 1 + std::log(depth) * std::log(i) / 2.5;
+      reduction = std::min(reduction, depth - 1);
+
+      score = -negamax(depth - 1 - reduction, -beta, -alpha, ply + 1, false);
+
+      if (score > alpha) {
+        score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
+      }
+    }
 
     board.unmakeMove(move);
 
@@ -227,6 +244,8 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     if (stopSearchFlag) {
       return 0;
     }
+
+    alpha = std::max(score, alpha);
 
     if (score > bestScore) {
       bestScore = score;
@@ -239,7 +258,6 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
                             pvTable[ply + 1].end());
       }
     }
-    alpha = std::max(bestScore, alpha);
 
     if (alpha >= beta) {
       if (!board.isCapture(move) && move.typeOf() != Move::PROMOTION) {
