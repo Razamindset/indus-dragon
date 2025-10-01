@@ -48,3 +48,8 @@ I have high hopes and I believe I can pull this off. Earlier my progress with HC
 
 Keep repeating these steps and u will have a good chess engine.
 Sadly I will have to change this in the main branch but its okay. It's the price to pay for progress.
+
+## LMR and Sttic NMP
+
+Dated: 28 september 2025
+Added static Null Move pruning and late move reductions to indus dragon. The estimated elo gain after testing is about 190 +- 20 combined with LMR giving about 150 points. And Pruning gives about 50 points. I will try to improve the search a  little more before moving on to adding some improvemnets to the HCE. After these improvements the current version of the engine is about 30 to 40 points stronger than #6a95e7a.  
