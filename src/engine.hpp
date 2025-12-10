@@ -18,17 +18,11 @@ class Engine {
 
   void makeMove(std::string move);
 
-  void getBestMove();
+  void uciLoop();
 
-  void stopSearch();
+  void handleGo(std::istringstream &iss);
 
-  void uci_loop();
-
-  void handle_stop();
-
-  void handle_go(std::istringstream &iss);
-
-  void handle_positon(std::istringstream &iss);
+  void handleFen(std::istringstream &iss);
 
  private:
   chess::Board board;
