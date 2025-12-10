@@ -151,7 +151,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   if (depth == 0) {
     // Check extensions. Use if qsearch is not explicitly making sure that
     // checks are handled
-    if (board.inCheck() && depth < MAX_SEARCH_DEPTH) {
+    if (board.inCheck() && depth < 20) {
       depth++;
     } else {
       return qsearch(alpha, beta, ply);
