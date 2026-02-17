@@ -30,4 +30,4 @@ static constexpr long long INFINITE_TIME = 1000000000LL;  // 1 billion ms
 static constexpr double SOFT_TIME_FACTOR = 0.4;
 static constexpr double HARD_TIME_FACTOR = 2.5;
 static constexpr long long MIN_SEARCH_TIME = 10;
-static constexpr long long SAFETY_BUFFER = 100;
+static constexpr long long SAFETY_BUFFER = 50;
