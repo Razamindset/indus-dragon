@@ -15,6 +15,7 @@ bool TranspositionTable::probeTT(uint64_t hash, int depth, int &score,
                                  int alpha, int beta, chess::Move &bestMove,
                                  int ply) {
   const int index = hash & (MAX_TT_ENTRIES - 1);
+  if (index < 0 || index >= (int)transpositionTable.size()) return false;
   const TTEntry &entry = transpositionTable[index];
 
   if (entry.hash != hash) {
@@ -55,6 +56,8 @@ void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
   }
 
   const int index = hash & (MAX_TT_ENTRIES - 1);
-  transpositionTable[index] = {hash, score, depth, type, bestMove};
+  if (index >= 0 && index < (int)transpositionTable.size()) {
+    transpositionTable[index] = {hash, score, depth, type, bestMove};
+  }
   ttStores++;
 }

@@ -31,7 +31,13 @@ class TranspositionTable {
                chess::Move &bestMove, int ply);
 
   void clear_table() {
-    transpositionTable.clear();
+    // CRASH FIX: Originally used transpositionTable.clear(), which reduced the 
+    // vector size to 0 and caused out-of-bounds access during search.
+    // Preserving size and resetting entries instead.
+    for (auto &entry : transpositionTable) {
+      entry = TTEntry{};
+    }
+
     ttHits = 0;
     ttStores = 0;
   }

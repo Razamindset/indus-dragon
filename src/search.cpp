@@ -17,7 +17,11 @@ The api is different for windows and unix based systems.
 */
 void Search::communicate() {
 #ifdef _WIN32
-  if (_kbhit()) {
+  static HANDLE stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD available = 0;
+
+  if (PeekNamedPipe(stdin_handle, NULL, 0, NULL, &available, NULL) &&
+      available > 0) {
     std::string line;
     std::getline(std::cin, line);
     if (line == "stop") {
@@ -26,6 +30,11 @@ void Search::communicate() {
     } else if (line == "quit") {
       logMessage("quit");
       exit(0);
+    } else if (line == "isready") {
+      std::cout << "readyok" << std::endl;
+      fflush(stdout);
+    } else if (line == "ucinewgame") {
+      tt_helper.clear_table();
     }
   }
 #else
@@ -42,6 +51,11 @@ void Search::communicate() {
     } else if (line == "quit") {
       logMessage("quit");
       exit(0);
+    } else if (line == "isready") {
+      std::cout << "readyok" << std::endl;
+      fflush(stdout);
+    } else if (line == "ucinewgame") {
+      tt_helper.clear_table();
     }
   }
 #endif
