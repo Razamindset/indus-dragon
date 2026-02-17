@@ -26,6 +26,11 @@ void Search::communicate() {
     } else if (line == "quit") {
       logMessage("quit");
       exit(0);
+    } else if (line == "isready") {
+      std::cout << "readyok" << std::endl;
+      fflush(stdout);
+    } else if (line == "ucinewgame") {
+      tt_helper.clear_table();
     }
   }
 #else
@@ -42,6 +47,11 @@ void Search::communicate() {
     } else if (line == "quit") {
       logMessage("quit");
       exit(0);
+    } else if (line == "isready") {
+      std::cout << "readyok" << std::endl;
+      fflush(stdout);
+    } else if (line == "ucinewgame") {
+      tt_helper.clear_table();
     }
   }
 #endif
