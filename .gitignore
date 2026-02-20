@@ -95,3 +95,4 @@ test
 uci_log.txt
 src/test.cpp
 .env
+networks_training/
