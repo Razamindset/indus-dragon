@@ -442,7 +442,7 @@ int Search::getPieceValue(Piece piece) {
   }
 }
 
-int Search::evaluate() { return evaluator.evaluate(board); }
+int Search::evaluate() { return 0; }
 
 bool Search::isGameOver(const chess::Board &board) {
   auto result = board.isGameOver();
