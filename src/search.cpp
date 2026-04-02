@@ -67,6 +67,8 @@ Search::Search(Board &board, TranspositionTable &tt_helper)
   for (auto &pv : pvTable) {
     pv.reserve(MAX_SEARCH_DEPTH);
   }
+
+  nnue.load_network("./indus_dragon_v3.bin");
 }
 
 void Search::searchBestMove() {
@@ -89,6 +91,8 @@ void Search::searchBestMove() {
 
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
+
+  nnue.refreshAccumulator(board, acc);
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
@@ -233,6 +237,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   for (int i = 0; i < moves.size(); ++i) {
     Move move = moves[i];
     board.makeMove(move);
+    nnue.refreshAccumulator(board, acc);
 
     int score;
 
@@ -395,6 +400,7 @@ int Search::qsearch(int alpha, int beta, int ply) {
 
   for (Move move : moves) {
     board.makeMove(move);
+    nnue.refreshAccumulator(board, acc);
     int score = -qsearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
 
@@ -442,7 +448,7 @@ int Search::getPieceValue(Piece piece) {
   }
 }
 
-int Search::evaluate() { return 0; }
+int Search::evaluate() { return nnue.evaluate(board.sideToMove(), acc); }
 
 bool Search::isGameOver(const chess::Board &board) {
   auto result = board.isGameOver();

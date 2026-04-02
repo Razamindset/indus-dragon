@@ -7,6 +7,7 @@
 #include "chess.hpp"
 #include "constants.hpp"
 #include "tt.hpp"
+#include "nnue.hpp"
 
 using namespace chess;
 
@@ -31,6 +32,9 @@ class Search {
   Board &board;
 
   TranspositionTable &tt_helper;
+
+  NNUE::Accumulator acc;
+  NNUE::Network nnue;
 
   bool stopSearchFlag = false;
 

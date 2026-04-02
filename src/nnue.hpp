@@ -16,8 +16,8 @@ namespace NNUE {
 
   alignas(32) extern int16_t FEATURE_WEIGHTS[INPUT_FEATURES][HIDDEN_SIZE];
   alignas(32) extern int16_t FEATURE_BIAS[HIDDEN_SIZE];
-  alignas(32) extern int16_t HIDDEN_WEIGHTS[HIDDEN_SIZE];
-  alignas(32) extern int16_t HIDDEN_BIAS;
+  alignas(32) extern int16_t OUTPUT_WEIGHTS[HIDDEN_SIZE];
+  alignas(32) extern int16_t OUTPUT_BIAS;
     
   struct alignas(32) Accumulator {
     std::array<int16_t, HIDDEN_SIZE>values;
@@ -30,9 +30,9 @@ namespace NNUE {
   class Network {
   public:
     void load_network(const std::string& path);
-    void refreshAccumulator();
+    void refreshAccumulator(const chess::Board& board, Accumulator& acc);
     void updateAccumulator();
-    int evaluate();
+    int evaluate(chess::Color stm, const Accumulator& acc) const;
 
   private:
     static int sigmoidToCp(float prob);

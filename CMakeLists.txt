@@ -21,6 +21,7 @@ set(SOURCES
     src/search.cpp
     src/time_manager.cpp
     src/tt.cpp
+    src/nnue.cpp
 )
 
 add_executable(${EXECUTABLE_NAME} ${SOURCES})
