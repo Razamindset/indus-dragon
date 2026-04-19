@@ -2,6 +2,9 @@
 #include "nnue_data.hpp"
 #include <iostream>
 #include <cassert>
+#include <immintrin.h> // SIMD Intrinsics: Provides hardware-accelerated functions for Intel/AMD CPUs
+
+// ! This AVX2 code is written by AI GODS
 
 namespace NNUE {
     alignas(32) int16_t FEATURE_WEIGHTS[INPUT_FEATURES][HIDDEN_SIZE];
@@ -48,9 +51,18 @@ namespace NNUE {
 
     void Network::refreshAccumulator(const chess::Board &board, Accumulator &acc) {
         // Start from the bias
+#ifdef USE_AVX2
+        // AVX2 Optimization: Load and store 16 x 16-bit values at a time using 256-bit registers (__m256i)
+        for (int i = 0; i < HIDDEN_SIZE; i += 16) {
+            // _mm256_load_si256: Loads 256 bits of data from a 32-byte aligned memory address
+            // _mm256_store_si256: Stores 256 bits of data to a 32-byte aligned memory address
+            _mm256_store_si256((__m256i*)&acc.values[i], _mm256_load_si256((__m256i*)&FEATURE_BIASES[i]));
+        }
+#else
         for (int i = 0; i < HIDDEN_SIZE; ++i) {
             acc.values[i] = FEATURE_BIASES[i];
         }
+#endif
 
         // Now let's add the active peice features
         chess::Bitboard pieces = board.us(chess::Color::WHITE) | board.us(chess::Color::BLACK);
@@ -85,10 +97,26 @@ namespace NNUE {
         }
 
         auto updatePiece = [&](Accumulator &a, int idx, bool add) {
+#ifdef USE_AVX2
+            // SIMD Optimization for Piece Updates
+            for (int h = 0; h < HIDDEN_SIZE; h += 16) {
+                // __m256i is a 256-bit register variable. It holds 16 short integers (16-bit each).
+                __m256i acc_vec = _mm256_load_si256((__m256i*)&a.values[h]);
+                __m256i weight_vec = _mm256_load_si256((__m256i*)&FEATURE_WEIGHTS[idx][h]);
+                
+                // _mm256_add_epi16: Adds 16 pairs of 16-bit integers in one CPU cycle
+                if (add) acc_vec = _mm256_add_epi16(acc_vec, weight_vec);
+                // _mm256_sub_epi16: Subtracts 16 pairs of 16-bit integers in one CPU cycle
+                else acc_vec = _mm256_sub_epi16(acc_vec, weight_vec);
+                
+                _mm256_store_si256((__m256i*)&a.values[h], acc_vec);
+            }
+#else
             for (int h = 0; h < HIDDEN_SIZE; ++h) {
                 if (add) a.values[h] += FEATURE_WEIGHTS[idx][h];
                 else a.values[h] -= FEATURE_WEIGHTS[idx][h];
             }
+#endif
         };
 
         // Remove moving piece from original square
@@ -133,6 +161,30 @@ namespace NNUE {
 
     // Final board evaluation
     int Network::evaluate(chess::Color stm, const Accumulator& acc) const{
+#ifdef USE_AVX2
+        // sum_vec will hold 8 separate 32-bit integer sums
+        __m256i sum_vec = _mm256_setzero_si256();
+        const __m256i zero = _mm256_setzero_si256();
+
+        for (int i = 0; i < HIDDEN_SIZE; i += 16) {
+            __m256i acc_vec = _mm256_load_si256((const __m256i*)&acc.values[i]);
+            __m256i weight_vec = _mm256_load_si256((const __m256i*)&OUTPUT_WEIGHTS[i]);
+
+            // SCReLU/ReLU Activation: _mm256_max_epi16 handles max(0, x) for 16 values at once
+            __m256i activated = _mm256_max_epi16(acc_vec, zero);
+
+            // _mm256_madd_epi16: The "Dot-Product" instruction. 
+            // It multiplies 16-bit pairs and stores the result as 32-bit sums in 8 slots.
+            __m256i madd = _mm256_madd_epi16(activated, weight_vec);
+            sum_vec = _mm256_add_epi32(sum_vec, madd);
+        }
+
+        // Condense the 8 partial sums in sum_vec into a single scalar result
+        alignas(32) int32_t temp_sums[8];
+        _mm256_store_si256((__m256i*)temp_sums, sum_vec);
+        int32_t sum = OUTPUT_BIAS;
+        for (int i = 0; i < 8; ++i) sum += temp_sums[i];
+#else
         int32_t sum = OUTPUT_BIAS;
 
         // Hidden -> output
@@ -140,6 +192,7 @@ namespace NNUE {
             int32_t activated = std::max<int32_t>(0, acc.values[i]);
             sum += activated * OUTPUT_WEIGHTS[i];
         }
+#endif
 
         // Undo the scaling from the export 
         // Undo scaling from export (*255 twice)
