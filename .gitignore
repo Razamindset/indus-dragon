@@ -95,7 +95,7 @@ test
 uci_log.txt
 src/test.cpp
 .env
-networks_training/
 datagen.txt
 nnue_test_suite
 log.txt
+*.bin
