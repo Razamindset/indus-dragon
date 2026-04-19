@@ -6,8 +6,8 @@
 
 #include "chess.hpp"
 #include "constants.hpp"
-#include "evaluation.hpp"
 #include "tt.hpp"
+#include "nnue.hpp"
 
 using namespace chess;
 
@@ -33,7 +33,8 @@ class Search {
 
   TranspositionTable &tt_helper;
 
-  Evaluation evaluator;
+  NNUE::Accumulator accStack[MAX_SEARCH_DEPTH];
+  NNUE::Network nnue;
 
   bool stopSearchFlag = false;
 
@@ -57,7 +58,7 @@ class Search {
 
   void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
 
-  int evaluate();
+  int evaluate(int ply);
 
   bool isGameOver(const chess::Board &board);
 

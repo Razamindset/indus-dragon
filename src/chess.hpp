@@ -1289,6 +1289,10 @@ inline std::ostream &operator<<(std::ostream &os, const Move &move) {
     Square from_sq = move.from();
     Square to_sq   = move.to();
 
+    if (move.typeOf() == Move::CASTLING) {
+        to_sq = Square(to_sq > from_sq ? File::FILE_G : File::FILE_C, from_sq.rank());
+    }
+
     os << from_sq << to_sq;
 
     if (move.typeOf() == Move::PROMOTION) {

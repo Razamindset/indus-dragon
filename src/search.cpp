@@ -67,6 +67,8 @@ Search::Search(Board &board, TranspositionTable &tt_helper)
   for (auto &pv : pvTable) {
     pv.reserve(MAX_SEARCH_DEPTH);
   }
+
+  nnue.load_network("./indus_dragon_v3.bin");
 }
 
 void Search::searchBestMove() {
@@ -89,6 +91,8 @@ void Search::searchBestMove() {
 
   Move bestMove = Move::NULL_MOVE;
   std::vector<Move> bestLine;
+
+  nnue.refreshAccumulator(board, accStack[0]);
 
   // Iterative Deepening Loop
   for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
@@ -191,13 +195,14 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     return ttScore;
   }
 
-  // Null move Pruning NMP. Elo: 77.71 +- 30
-  if (depth > 3 && !board.inCheck() &&
-      board.hasNonPawnMaterial(board.sideToMove()) &&
-      depth != MAX_SEARCH_DEPTH && !is_null) {
-    board.makeNullMove();
-    int score = -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);
-    board.unmakeNullMove();
+    // Null move Pruning NMP. Elo: 77.71 +- 30
+    if (depth > 3 && !board.inCheck() &&
+        board.hasNonPawnMaterial(board.sideToMove()) &&
+        depth != MAX_SEARCH_DEPTH && !is_null) {
+      accStack[ply + 1] = accStack[ply]; // Copy current accumulator to next ply
+      board.makeNullMove();
+      int score = -negamax(depth - 2, -beta, -beta + 1, ply + 1, true);
+      board.unmakeNullMove();
 
     if (stopSearchFlag) {
       return 0;
@@ -213,7 +218,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   // Conditions: not in check, not PV node, depth small, and not close to mate
   // score.
   if (depth <= 3 && !board.inCheck() && alpha < MATE_SCORE - 1000) {
-    int staticEval = evaluate();
+    int staticEval = evaluate(ply);
 
     int margin = 120 * depth;
 
@@ -232,6 +237,11 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
 
   for (int i = 0; i < moves.size(); ++i) {
     Move move = moves[i];
+
+    // Incremental NNUE update
+    accStack[ply + 1] = accStack[ply];
+    nnue.updateAccumulator(board, move, accStack[ply + 1]);
+
     board.makeMove(move);
 
     int score;
@@ -374,7 +384,7 @@ int Search::qsearch(int alpha, int beta, int ply) {
       return 0;
   }
 
-  int standPat = evaluate();
+  int standPat = evaluate(ply);
 
   if (standPat >= beta) {
     return beta;
@@ -394,6 +404,10 @@ int Search::qsearch(int alpha, int beta, int ply) {
   orderMoves(moves, Move::NULL_MOVE, ply, true);
 
   for (Move move : moves) {
+    // Incremental NNUE update
+    accStack[ply + 1] = accStack[ply];
+    nnue.updateAccumulator(board, move, accStack[ply + 1]);
+
     board.makeMove(move);
     int score = -qsearch(-beta, -alpha, ply + 1);
     board.unmakeMove(move);
@@ -442,7 +456,7 @@ int Search::getPieceValue(Piece piece) {
   }
 }
 
-int Search::evaluate() { return evaluator.evaluate(board); }
+int Search::evaluate(int ply) { return nnue.evaluate(board.sideToMove(), accStack[ply]); }
 
 bool Search::isGameOver(const chess::Board &board) {
   auto result = board.isGameOver();
