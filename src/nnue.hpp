@@ -31,6 +31,8 @@ namespace NNUE {
   public:
     void load_network(const std::string& path);
     void refreshAccumulator(const chess::Board& board, Accumulator& acc);
+    // NEW: Efficiently updatable refresher
+    void updateAccumulator(const chess::Board& board, chess::Move move, Accumulator& acc);
     void updateAccumulator();
     int evaluate(chess::Color stm, const Accumulator& acc) const;
 

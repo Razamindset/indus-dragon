@@ -33,7 +33,7 @@ class Search {
 
   TranspositionTable &tt_helper;
 
-  NNUE::Accumulator acc;
+  NNUE::Accumulator accStack[MAX_SEARCH_DEPTH];
   NNUE::Network nnue;
 
   bool stopSearchFlag = false;
@@ -58,7 +58,7 @@ class Search {
 
   void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
 
-  int evaluate();
+  int evaluate(int ply);
 
   bool isGameOver(const chess::Board &board);
 

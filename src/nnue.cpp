@@ -1,5 +1,7 @@
 #include "nnue.hpp"
-#include  "nnue_data.hpp"
+#include "nnue_data.hpp"
+#include <iostream>
+#include <cassert>
 
 namespace NNUE {
     alignas(32) int16_t FEATURE_WEIGHTS[INPUT_FEATURES][HIDDEN_SIZE];
@@ -69,6 +71,56 @@ namespace NNUE {
             for (int h = 0; h < HIDDEN_SIZE; ++h) {
                 acc.values[h] += FEATURE_WEIGHTS[idx][h];
             }
+        }
+    }
+
+    void Network::updateAccumulator(const chess::Board &board, chess::Move move, Accumulator &acc) {
+        const chess::Color stm = board.sideToMove();
+        const auto from = move.from();
+        const auto to = move.to();
+        const auto piece = board.at(from);
+
+        if (piece.type() == chess::PieceType::NONE) {
+            return;
+        }
+
+        auto updatePiece = [&](Accumulator &a, int idx, bool add) {
+            for (int h = 0; h < HIDDEN_SIZE; ++h) {
+                if (add) a.values[h] += FEATURE_WEIGHTS[idx][h];
+                else a.values[h] -= FEATURE_WEIGHTS[idx][h];
+            }
+        };
+
+        // Remove moving piece from original square
+        updatePiece(acc, getPieceIndex(piece.color(), piece.type(), from), false);
+
+        if (move.typeOf() == chess::Move::CASTLING) {
+            const bool king_side = (to.index() > from.index());
+            const auto rook_from = to;
+            const auto rook = board.at(rook_from);
+            const auto king_to = chess::Square::castling_king_square(king_side, stm);
+            const auto rook_to = chess::Square::castling_rook_square(king_side, stm);
+
+            updatePiece(acc, getPieceIndex(rook.color(), rook.type(), rook_from), false);
+            updatePiece(acc, getPieceIndex(rook.color(), rook.type(), rook_to), true);
+            updatePiece(acc, getPieceIndex(piece.color(), piece.type(), king_to), true);
+        } else if (move.typeOf() == chess::Move::PROMOTION) {
+            const auto captured = board.at(to);
+            if (captured != chess::Piece::NONE) {
+                updatePiece(acc, getPieceIndex(captured.color(), captured.type(), to), false);
+            }
+            updatePiece(acc, getPieceIndex(stm, move.promotionType(), to), true);
+        } else if (move.typeOf() == chess::Move::ENPASSANT) {
+            updatePiece(acc, getPieceIndex(piece.color(), piece.type(), to), true);
+            const auto captured_pawn_sq = chess::Square(to.file(), from.rank());
+            const auto captured_pawn = board.at(captured_pawn_sq);
+            updatePiece(acc, getPieceIndex(captured_pawn.color(), captured_pawn.type(), captured_pawn_sq), false);
+        } else {
+            const auto captured = board.at(to);
+            if (captured != chess::Piece::NONE) {
+                updatePiece(acc, getPieceIndex(captured.color(), captured.type(), to), false);
+            }
+            updatePiece(acc, getPieceIndex(piece.color(), piece.type(), to), true);
         }
     }
 
