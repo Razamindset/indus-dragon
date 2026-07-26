@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(EXECUTABLE_NAME indus-dragon)
+option(INDUS_ENABLE_AVX2 "Build with AVX2 NNUE intrinsics" OFF)
 
 # Add source files
 set(SOURCES
@@ -38,35 +39,22 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 # Architecture-specific optimizations
 include(CheckCXXCompilerFlag)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(INDUS_ENABLE_AVX2 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
     check_cxx_compiler_flag("-mavx2" HAVE_AVX2)
-    check_cxx_compiler_flag("-msse4.1" HAVE_SSE41)
-    check_cxx_compiler_flag("-mssse3" HAVE_SSSE3)
-    check_cxx_compiler_flag("-msse2" HAVE_SSE2)
 
     if(HAVE_AVX2)
-        message(STATUS "AVX2 support detected, enabling AVX2 optimizations.")
-        target_compile_options(${EXECUTABLE_NAME} PRIVATE "-mavx2")
-        target_compile_definitions(${EXECUTABLE_NAME} PRIVATE USE_AVX2)
-    elseif(HAVE_SSE41)
-        message(STATUS "SSE4.1 support detected, enabling SSE4.1 optimizations.")
-        target_compile_options(${EXECUTABLE_NAME} PRIVATE "-msse4.1")
-        target_compile_definitions(${EXECUTABLE_NAME} PRIVATE USE_SSE41)
-    elseif(HAVE_SSSE3)
-        message(STATUS "SSSE3 support detected, enabling SSSE3 optimizations.")
-        target_compile_options(${EXECUTABLE_NAME} PRIVATE "-mssse3")
-        target_compile_definitions(${EXECUTABLE_NAME} PRIVATE USE_SSSE3)
-    elseif(HAVE_SSE2)
-        message(STATUS "SSE2 support detected, enabling SSE2 optimizations.")
-        target_compile_options(${EXECUTABLE_NAME} PRIVATE "-msse2")
-        target_compile_definitions(${EXECUTABLE_NAME} PRIVATE USE_SSE2)
+        message(STATUS "AVX2 support detected, enabling AVX2 only for NNUE.")
+        set_source_files_properties(src/nnue.cpp PROPERTIES
+            COMPILE_OPTIONS "-mavx2"
+            COMPILE_DEFINITIONS USE_AVX2
+        )
     endif()
-elseif(MSVC)
-    # The source code enables USE_AVX2 and others via _MSC_VER
-    # We can use /arch:AVX2 to ensure the compiler can generate AVX2 instructions
-    message(STATUS "MSVC detected, enabling AVX2 optimizations.")
-    target_compile_options(${EXECUTABLE_NAME} PRIVATE /arch:AVX2)
-    target_compile_definitions(${EXECUTABLE_NAME} PRIVATE USE_AVX2)
+elseif(INDUS_ENABLE_AVX2 AND MSVC)
+    message(STATUS "MSVC detected, enabling AVX2 only for NNUE.")
+    set_source_files_properties(src/nnue.cpp PROPERTIES
+        COMPILE_OPTIONS "/arch:AVX2"
+        COMPILE_DEFINITIONS USE_AVX2
+    )
 endif()
 
 # 64-bit check
