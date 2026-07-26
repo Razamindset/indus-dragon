@@ -10,12 +10,9 @@
 #include "tt.hpp"
 #include "nnue.hpp"
 
-using namespace chess;
-
-
 class Search {
  public:
-  Search(Board &board, TranspositionTable &tt_helper);
+  Search(chess::Board &board, TranspositionTable &tt_helper);
 
   void searchBestMove();
 
@@ -30,7 +27,7 @@ class Search {
   void communicate();
 
  private:
-  Board &board;
+  chess::Board &board;
 
   TranspositionTable &tt_helper;
 
@@ -51,23 +48,23 @@ class Search {
   void clearHistory();
 
   // Search
-  std::vector<std::vector<Move>> pvTable;
+  std::vector<std::vector<chess::Move>> pvTable;
 
   int negamax(int depth, int alpha, int beta, int ply, bool is_null);
 
   int qsearch(int alpha, int beta, int ply);
 
-  void orderMoves(Movelist &moves, Move tt_move, int ply, bool isQuiescence);
+  void orderMoves(chess::Movelist &moves, chess::Move tt_move, int ply, bool isQuiescence);
 
   int evaluate(int ply);
 
   bool isGameOver(const chess::Board &board);
 
-  GameResultReason getGameOverReason(const chess::Board &board);
+  chess::GameResultReason getGameOverReason(const chess::Board &board);
 
-  int getPieceValue(Piece piece);
+  int getPieceValue(chess::Piece piece);
 
-  void printInfoLine(int eval, std::vector<Move> pv, int currentDepth,
+  void printInfoLine(int eval, std::vector<chess::Move> pv, int currentDepth,
                      long long nps, long long elapsedTime);
 
   bool storeLogs = false;

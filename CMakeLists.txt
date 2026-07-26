@@ -58,9 +58,9 @@ elseif(INDUS_ENABLE_AVX2 AND MSVC)
 endif()
 
 # 64-bit check
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    target_compile_definitions(${EXECUTABLE_NAME} PRIVATE IS_64BIT)
-endif()
+# if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+#     target_compile_definitions(${EXECUTABLE_NAME} PRIVATE IS_64BIT)
+# endif()
 
 install(TARGETS ${EXECUTABLE_NAME}
     RUNTIME DESTINATION bin

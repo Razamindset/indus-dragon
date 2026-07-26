@@ -61,7 +61,7 @@ void Search::communicate() {
 #endif
 }
 
-Search::Search(Board &board, TranspositionTable &tt_helper)
+Search::Search(chess::Board &board, TranspositionTable &tt_helper)
     : board(board), tt_helper(tt_helper) {
   pvTable.resize(MAX_SEARCH_DEPTH);
   for (auto &pv : pvTable) {
@@ -80,7 +80,7 @@ void Search::searchBestMove() {
   SearchTime searchTime = calculateSearchTime();
   softTime = searchTime.soft;
   hardTime = searchTime.hard;
-  
+
   clearKiller();
   clearHistory();
 
@@ -90,10 +90,10 @@ void Search::searchBestMove() {
 
   moveChanges = 0;
 
-  Move last_iteration_best_move = Move::NULL_MOVE;
+  chess::Move last_iteration_best_move = chess::Move::NULL_MOVE;
 
-  Move bestMove = Move::NULL_MOVE;
-  std::vector<Move> bestLine;
+  chess::Move bestMove = chess::Move::NULL_MOVE;
+  std::vector<chess::Move> bestLine;
 
   nnue.refreshAccumulator(board, accStack[0]);
 
@@ -108,7 +108,7 @@ void Search::searchBestMove() {
 
     const auto &currentBestLine = pvTable[0];
     if (!currentBestLine.empty()) {
-      if (last_iteration_best_move != Move::NULL_MOVE &&
+      if (last_iteration_best_move != chess::Move::NULL_MOVE &&
           currentBestLine.front() != last_iteration_best_move) {
         moveChanges++;
       }
@@ -134,13 +134,13 @@ void Search::searchBestMove() {
     }
   }
 
-  if (bestMove == Move::NULL_MOVE) {
-    Movelist moves;
-    movegen::legalmoves(moves, board);
+  if (bestMove == chess::Move::NULL_MOVE) {
+    chess::Movelist moves;
+    chess::movegen::legalmoves(moves, board);
     bestMove = moves[0];
   }
 
-  const std::string bestmove_str = "bestmove " + uci::moveToUci(bestMove);
+  const std::string bestmove_str = "bestmove " + chess::uci::moveToUci(bestMove);
   std::cout << bestmove_str << std::endl;
   logMessage(bestmove_str);
 }
@@ -163,7 +163,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   positionsSearched++;
 
   if (isGameOver(board)) {
-    if (getGameOverReason(board) == GameResultReason::CHECKMATE)
+    if (getGameOverReason(board) == chess::GameResultReason::CHECKMATE)
       return -MATE_SCORE + ply;
     else
       return 0;
@@ -184,13 +184,13 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   }
 
   if (board.isHalfMoveDraw() &&
-      board.getHalfMoveDrawType().second == GameResult::DRAW) {
+      board.getHalfMoveDrawType().second == chess::GameResult::DRAW) {
     return 0;
   }
 
   uint64_t boardhash = board.hash();
   int ttScore = 0;
-  Move ttMove = Move::NULL_MOVE;
+  chess::Move ttMove = chess::Move::NULL_MOVE;
   int originalAlpha = alpha;
 
   if (tt_helper.probeTT(boardhash, depth, ttScore, alpha, beta, ttMove, ply) &&
@@ -230,16 +230,16 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     }
   }
 
-  Movelist moves;
-  movegen::legalmoves(moves, board);
+  chess::Movelist moves;
+  chess::movegen::legalmoves(moves, board);
 
   orderMoves(moves, ttMove, ply, false);
 
-  Move bestMove = Move::NULL_MOVE;
+  chess::Move bestMove = chess::Move::NULL_MOVE;
   int bestScore = -MATE_SCORE;
 
   for (int i = 0; i < moves.size(); ++i) {
-    Move move = moves[i];
+    chess::Move move = moves[i];
 
     // Incremental NNUE update
     accStack[ply + 1] = accStack[ply];
@@ -287,7 +287,7 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     }
 
     if (alpha >= beta) {
-      if (!board.isCapture(move) && move.typeOf() != Move::PROMOTION) {
+      if (!board.isCapture(move) && move.typeOf() != chess::Move::PROMOTION) {
         killerMoves[ply][1] = killerMoves[ply][0];
         killerMoves[ply][0] = move;
 
@@ -316,22 +316,22 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
 }
 
 /* Order moves based on their priority */
-void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
+void Search::orderMoves(chess::Movelist &moves, chess::Move ttMove, int ply,
                         bool isQuiescence) {
-  const Move killer1 = killerMoves[ply][0];
-  const Move killer2 = killerMoves[ply][1];
+  const chess::Move killer1 = killerMoves[ply][0];
+  const chess::Move killer2 = killerMoves[ply][1];
 
-  for (Move &move : moves) {
+  for (chess::Move &move : moves) {
     int score = 0;
 
-    if (ttMove != Move::NULL_MOVE && move == ttMove) {
+    if (ttMove != chess::Move::NULL_MOVE && move == ttMove) {
       score += 10000;
     }
 
     // Prioritize captures using MVV-LVA
     if (board.isCapture(move)) {
-      Piece attacker = board.at(move.from());
-      Piece victim = board.at(move.to());
+      chess::Piece attacker = board.at(move.from());
+      chess::Piece victim = board.at(move.to());
       score += 3000 + getPieceValue(victim) - getPieceValue(attacker);
     } else {
       if (move == killer1) {
@@ -346,14 +346,14 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
     }
 
     // Prioritize promotions
-    if (move.typeOf() == Move::PROMOTION) {
-      if (move.promotionType() == QUEEN)
+    if (move.typeOf() == chess::Move::PROMOTION) {
+      if (move.promotionType() == chess::QUEEN)
         score += 900;
-      else if (move.promotionType() == ROOK)
+      else if (move.promotionType() == chess::ROOK)
         score += 500;
-      else if (move.promotionType() == BISHOP)
+      else if (move.promotionType() == chess::BISHOP)
         score += 320;
-      else if (move.promotionType() == KNIGHT)
+      else if (move.promotionType() == chess::KNIGHT)
         score += 300;
     }
 
@@ -362,7 +362,7 @@ void Search::orderMoves(Movelist &moves, Move ttMove, int ply,
 
   // Sort moves in descending order of score
   std::sort(moves.begin(), moves.end(),
-            [](const Move &a, const Move &b) { return a.score() > b.score(); });
+            [](const chess::Move &a, const chess::Move &b) { return a.score() > b.score(); });
 }
 
 /* Reach a stable quiet pos before evaluating */
@@ -381,7 +381,7 @@ int Search::qsearch(int alpha, int beta, int ply) {
   positionsSearched++;
 
   if (isGameOver(board)) {
-    if (getGameOverReason(board) == GameResultReason::CHECKMATE)
+    if (getGameOverReason(board) == chess::GameResultReason::CHECKMATE)
       return -MATE_SCORE + ply;
     else
       return 0;
@@ -394,19 +394,19 @@ int Search::qsearch(int alpha, int beta, int ply) {
   }
   alpha = std::max(alpha, standPat);
 
-  Movelist allMoves;
-  movegen::legalmoves<movegen::MoveGenType::ALL>(allMoves, board);
+  chess::Movelist allMoves;
+  chess::movegen::legalmoves<chess::movegen::MoveGenType::ALL>(allMoves, board);
 
-  Movelist moves;
-  for (Move m : allMoves) {
-    if (board.isCapture(m) || m.typeOf() == Move::PROMOTION) {
+  chess::Movelist moves;
+  for (chess::Move m : allMoves) {
+    if (board.isCapture(m) || m.typeOf() == chess::Move::PROMOTION) {
       moves.add(m);
     }
   }
 
-  orderMoves(moves, Move::NULL_MOVE, ply, true);
+  orderMoves(moves, chess::Move::NULL_MOVE, ply, true);
 
-  for (Move move : moves) {
+  for (chess::Move move : moves) {
     // Incremental NNUE update
     accStack[ply + 1] = accStack[ply];
     nnue.updateAccumulator(board, move, accStack[ply + 1]);
@@ -442,7 +442,7 @@ void Search::clearHistory() {
   }
 }
 
-int Search::getPieceValue(Piece piece) {
+int Search::getPieceValue(chess::Piece piece) {
   switch (piece.type().internal()) {
     case chess::PieceType::PAWN:
       return 100;
@@ -466,12 +466,12 @@ bool Search::isGameOver(const chess::Board &board) {
   return result.second != chess::GameResult::NONE;
 }
 
-GameResultReason Search::getGameOverReason(const chess::Board &board) {
+chess::GameResultReason Search::getGameOverReason(const chess::Board &board) {
   auto result = board.isGameOver();
   return result.first;
 }
 
-void Search::printInfoLine(int bestScore, std::vector<Move> bestLine,
+void Search::printInfoLine(int bestScore, std::vector<chess::Move> bestLine,
                            int currentDepth, long long nps,
                            long long elapsedTime) {
   std::stringstream info_ss;

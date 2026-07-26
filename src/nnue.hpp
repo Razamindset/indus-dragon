@@ -15,7 +15,7 @@ namespace NNUE {
   constexpr int SCALE = 255;
 
   alignas(32) extern int16_t FEATURE_WEIGHTS[INPUT_FEATURES][HIDDEN_SIZE];
-  alignas(32) extern int16_t FEATURE_BIAS[HIDDEN_SIZE];
+  alignas(32) extern int16_t FEATURE_BIASES[HIDDEN_SIZE];
   alignas(32) extern int16_t OUTPUT_WEIGHTS[HIDDEN_SIZE];
   alignas(32) extern int16_t OUTPUT_BIAS;
     
@@ -33,7 +33,6 @@ namespace NNUE {
     void refreshAccumulator(const chess::Board& board, Accumulator& acc);
     // NEW: Efficiently updatable refresher
     void updateAccumulator(const chess::Board& board, chess::Move move, Accumulator& acc);
-    void updateAccumulator();
     int evaluate(chess::Color stm, const Accumulator& acc) const;
 
   private:
