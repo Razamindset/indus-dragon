@@ -4,12 +4,14 @@
 #include <string>
 #include <vector>
 
+#include "utils.hpp"
 #include "chess.hpp"
 #include "constants.hpp"
 #include "tt.hpp"
 #include "nnue.hpp"
 
 using namespace chess;
+
 
 class Search {
  public:
@@ -19,8 +21,7 @@ class Search {
 
   void stopSearch() { stopSearchFlag = true; }
 
-  void setTimevalues(int wtime, int btime, int winc, int binc, int movestogo,
-                     int movetime);
+  void setTimeValues(const GoOptions& options);
 
   void logMessage(const std::string &message);
 
@@ -86,11 +87,11 @@ class Search {
 
   bool checkHardTimeLimit();
 
-  void calculateSearchTime();
+  SearchTime calculateSearchTime() const;
 
-  int estimateMovesToGo(const chess::Board &board);
+  int estimateMovesToGo(const chess::Board &board) const;
 
-  int countPieces(const chess::Board &board);
+  int countPieces(const chess::Board &board) const;
 
   long long getElapsedTime();
 

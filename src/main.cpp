@@ -3,7 +3,7 @@
 int main() {
   Engine engine;
 
-  engine.initilizeEngine();
+  engine.initializeEngine();
 
   engine.uciLoop();
 

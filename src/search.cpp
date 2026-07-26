@@ -68,7 +68,7 @@ Search::Search(Board &board, TranspositionTable &tt_helper)
     pv.reserve(MAX_SEARCH_DEPTH);
   }
 
-  nnue.load_network("./indus_dragon_v3.bin");
+  nnue.load_network();
 }
 
 void Search::searchBestMove() {
@@ -77,7 +77,10 @@ void Search::searchBestMove() {
     return;
   }
 
-  calculateSearchTime();
+  SearchTime searchTime = calculateSearchTime();
+  softTime = searchTime.soft;
+  hardTime = searchTime.hard;
+  
   clearKiller();
   clearHistory();
 

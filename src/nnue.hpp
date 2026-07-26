@@ -29,7 +29,7 @@ namespace NNUE {
 
   class Network {
   public:
-    void load_network(const std::string& path);
+    void load_network();
     void refreshAccumulator(const chess::Board& board, Accumulator& acc);
     // NEW: Efficiently updatable refresher
     void updateAccumulator(const chess::Board& board, chess::Move move, Accumulator& acc);

@@ -6,7 +6,7 @@ void Engine::printBoard() { std::cout << board << "\n" << board.getFen(); }
 
 void Engine::setPosition(const std::string &fen) { board.setFen(fen); }
 
-void Engine::initilizeEngine() {
+void Engine::initializeEngine() {
   board = chess::Board();
   tt_helper.clear_table();
 }
@@ -16,46 +16,44 @@ void Engine::makeMove(std::string move) {
   board.makeMove(parsedMove);
 }
 
-void Engine::handleGo(std::istringstream &iss) {
-  int wtime = 0, btime = 0, winc = 0, binc = 0, movestogo = 0, movetime = 0;
-
+GoOptions parseGoOptions(std::istringstream& iss) {
+  GoOptions options;
   std::string token;
 
   while (iss >> token) {
     if (token == "infinite") {
-      break;
-
+      options.infinite = true;
     } else if (token == "wtime") {
-      iss >> wtime;
-
+      iss >> options.wtime;
     } else if (token == "btime") {
-      iss >> btime;
-
+      iss >> options.btime;
     } else if (token == "winc") {
-      iss >> winc;
-
+      iss >> options.winc;
     } else if (token == "binc") {
-      iss >> binc;
-
+      iss >> options.binc;
     } else if (token == "movestogo") {
-      iss >> movestogo;
-
+      iss >> options.movestogo;
     } else if (token == "movetime") {
-      iss >> movetime;
+      iss >> options.movetime;
     }
   }
 
-  search.setTimevalues(wtime, btime, winc, binc, movestogo, movetime);
+  return options;
+}
 
+void Engine::handleGo(std::istringstream& iss) {
+  GoOptions options = parseGoOptions(iss);
+  search.setTimeValues(options);
   search.searchBestMove();
 }
+
 
 void Engine::handleFen(std::istringstream &iss) {
   std::string token;
   iss >> token;
 
   if (token == "startpos") {
-    initilizeEngine();
+    initializeEngine();
 
     // Process any moves that come after "startpos moves"
     if (iss >> token && token == "moves") {
@@ -135,7 +133,7 @@ void Engine::uciLoop() {
     } else if (token == "quit") {
       exit(0);
     } else if (token == "ucinewgame") {
-      initilizeEngine();
+      initializeEngine();
     } else if (token == "togglelogs") {
       search.toggleLogs();
     } else if (token == "ttstats") {

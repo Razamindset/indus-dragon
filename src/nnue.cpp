@@ -12,7 +12,7 @@ namespace NNUE {
     alignas(32) int16_t OUTPUT_WEIGHTS[HIDDEN_SIZE];
     int16_t OUTPUT_BIAS = 0;
 
-    void Network::load_network(const std::string &path) {
+    void Network::load_network() {
         size_t offset = 0;
 
         // In out trainign code we go from 768 to 256

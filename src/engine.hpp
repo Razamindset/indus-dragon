@@ -6,6 +6,8 @@
 #include "constants.hpp"
 #include "search.hpp"
 #include "tt.hpp"
+#include "utils.hpp"
+
 
 class Engine {
  public:
@@ -14,7 +16,7 @@ class Engine {
 
   void printBoard();
 
-  void initilizeEngine();
+  void initializeEngine();
 
   void makeMove(std::string move);
 
