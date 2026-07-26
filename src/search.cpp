@@ -250,12 +250,12 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     int score;
 
     // Late Move Reductions
-    if (i < 3 || depth < 3) {
-      // Search first 3 moves with full depth
+    if (i < LMR_FULL_DEPTH_MOVES || depth < LMR_MIN_DEPTH) {
+      // Search first N moves with full depth
       score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
     } else {
-      // Reduce the dpeth
-      int reduction = 1 + std::log(depth) * std::log(i) / 2.5;
+      // Reduce the depth
+      int reduction = 1 + std::log(depth) * std::log(i) / LMR_DIVISOR;
       reduction = std::min(reduction, depth - 1);
 
       score = -negamax(depth - 1 - reduction, -beta, -alpha, ply + 1, false);

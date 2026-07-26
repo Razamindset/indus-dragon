@@ -1,12 +1,12 @@
 #pragma once
 
 struct GoOptions {
-  int wtime = 0;
-  int btime = 0;
-  int winc = 0;
-  int binc = 0;
-  int movestogo = 0;
-  int movetime = 0;
+  long long wtime = 0;
+  long long btime = 0;
+  long long winc = 0;
+  long long binc = 0;
+  long long movestogo = 0;
+  long long movetime = 0;
   bool infinite = false;
 
   bool hasTimeLimit() const {

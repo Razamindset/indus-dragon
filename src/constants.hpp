@@ -31,3 +31,8 @@ static constexpr double SOFT_TIME_FACTOR = 0.4;
 static constexpr double HARD_TIME_FACTOR = 2.5;
 static constexpr long long MIN_SEARCH_TIME = 10;
 static constexpr long long SAFETY_BUFFER = 50;
+
+// Late Move Reductions
+constexpr int LMR_FULL_DEPTH_MOVES = 3;   // moves searched at full depth before reducing
+constexpr int LMR_MIN_DEPTH = 3;          // don't reduce below this remaining depth
+constexpr double LMR_DIVISOR = 2.5;       // larger = less aggressive reduction

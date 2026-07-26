@@ -12,7 +12,7 @@ void Engine::initializeEngine() {
 }
 
 void Engine::makeMove(std::string move) {
-  Move parsedMove = uci::uciToMove(board, move);
+  chess::Move parsedMove = chess::uci::uciToMove(board, move);
   board.makeMove(parsedMove);
 }
 
