@@ -1,8 +1,10 @@
+#include "time_manager.hpp"
+
 #include <algorithm>
 
-#include "search.hpp"
+#include "constants.hpp"
 
-int Search::countPieces(const chess::Board &board) const {
+int TimeManager::countPieces(const chess::Board &board) const {
   return board.pieces(chess::PieceType::PAWN, chess::Color::WHITE).count() +
          board.pieces(chess::PieceType::PAWN, chess::Color::BLACK).count() +
          board.pieces(chess::PieceType::KNIGHT, chess::Color::WHITE).count() +
@@ -15,7 +17,7 @@ int Search::countPieces(const chess::Board &board) const {
          board.pieces(chess::PieceType::QUEEN, chess::Color::BLACK).count();
 }
 
-SearchTime Search::calculateSearchTime() const {
+SearchTime TimeManager::calculateSearchTime(const chess::Board &board) const {
   if (wtime <= 0 && btime <= 0 && movetime <= 0) {
     return {INFINITE_TIME, INFINITE_TIME};
   }
@@ -56,9 +58,8 @@ SearchTime Search::calculateSearchTime() const {
 }
 
 // Estimate moves remaining based on game phase
-int Search::estimateMovesToGo(const chess::Board &board) const {
+int TimeManager::estimateMovesToGo(const chess::Board &board) const {
   int piece_count = countPieces(board);
-
   int full_moves = board.fullMoveNumber();
 
   // Opening
@@ -75,18 +76,30 @@ int Search::estimateMovesToGo(const chess::Board &board) const {
   }
 }
 
-void Search::setTimeValues(const GoOptions& options) {
-  this->wtime = static_cast<long long>(options.wtime);
-  this->btime = static_cast<long long>(options.btime);
-  this->winc = static_cast<long long>(options.winc);
-  this->binc = static_cast<long long>(options.binc);
-  this->movestogo = static_cast<long long>(options.movestogo);
-  this->movetime = static_cast<long long>(options.movetime);
+void TimeManager::setTimeValues(const GoOptions& options) {
+  wtime = options.wtime;
+  btime = options.btime;
+  winc = options.winc;
+  binc = options.binc;
+  movestogo = options.movestogo;
+  movetime = options.movetime;
 
   timeEnabled = options.hasTimeLimit();
 }
 
-bool Search::manageTime(const long long elapsedTime) {
+void TimeManager::start(const chess::Board& board) {
+  SearchTime budget = calculateSearchTime(board);
+  softTime = budget.soft;
+  hardTime = budget.hard;
+  moveChanges = 0;
+  startTime = std::chrono::steady_clock::now();
+}
+
+bool TimeManager::shouldStopAfterIteration(long long elapsedTime, bool bestMoveChanged) {
+  if (bestMoveChanged) {
+    moveChanges++;
+  }
+
   if (!timeEnabled) {
     return false;
   }
@@ -102,20 +115,11 @@ bool Search::manageTime(const long long elapsedTime) {
   return false;  // Don't stop yet
 }
 
-bool Search::checkHardTimeLimit() {
-  if (timeEnabled) {
-    if (getElapsedTime() >= hardTime) {
-      stopSearchFlag = true;
-      return true;
-    }
-  }
-  return false;
+bool TimeManager::hardLimitReached() const {
+  return timeEnabled && elapsedMs() >= hardTime;
 }
 
-long long Search::getElapsedTime() {
+long long TimeManager::elapsedMs() const {
   auto current = std::chrono::steady_clock::now();
-  auto elapsedTime =
-      std::chrono::duration_cast<std::chrono::milliseconds>(current - startTime)
-          .count();
-  return elapsedTime;
+  return std::chrono::duration_cast<std::chrono::milliseconds>(current - startTime).count();
 }

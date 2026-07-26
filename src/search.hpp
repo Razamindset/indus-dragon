@@ -9,6 +9,7 @@
 #include "constants.hpp"
 #include "tt.hpp"
 #include "nnue.hpp"
+#include "time_manager.hpp"
 
 class Search {
  public:
@@ -69,33 +70,8 @@ class Search {
 
   bool storeLogs = false;
 
-  // Time management
-  bool timeEnabled = false;
-
-  long long softTime = 0;
-
-  long long hardTime = 0;
-
-  int moveChanges = 0;
-
-  std::chrono::steady_clock::time_point startTime;
-
-  bool manageTime(const long long elapsedTime);
-
+  TimeManager timeManager;
+  bool manageTime(long long elapsedTime, bool bestMoveChanged);
   bool checkHardTimeLimit();
-
-  SearchTime calculateSearchTime() const;
-
-  int estimateMovesToGo(const chess::Board &board) const;
-
-  int countPieces(const chess::Board &board) const;
-
   long long getElapsedTime();
-
-  long long wtime = 0;
-  long long btime = 0;
-  long long winc = 0;
-  long long binc = 0;
-  long long movestogo = 0;
-  long long movetime = 0;
 };

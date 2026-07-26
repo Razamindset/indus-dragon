@@ -77,18 +77,12 @@ void Search::searchBestMove() {
     return;
   }
 
-  SearchTime searchTime = calculateSearchTime();
-  softTime = searchTime.soft;
-  hardTime = searchTime.hard;
-
   clearKiller();
   clearHistory();
 
-  startTime = std::chrono::steady_clock::now();
+  timeManager.start(board);
 
   positionsSearched = 0;
-
-  moveChanges = 0;
 
   chess::Move last_iteration_best_move = chess::Move::NULL_MOVE;
 
@@ -107,11 +101,10 @@ void Search::searchBestMove() {
     }
 
     const auto &currentBestLine = pvTable[0];
+    bool bestMoveChanged = false;
     if (!currentBestLine.empty()) {
-      if (last_iteration_best_move != chess::Move::NULL_MOVE &&
-          currentBestLine.front() != last_iteration_best_move) {
-        moveChanges++;
-      }
+      bestMoveChanged = (last_iteration_best_move != chess::Move::NULL_MOVE &&
+                         currentBestLine.front() != last_iteration_best_move);
       bestMove = currentBestLine.front();
       bestLine = currentBestLine;
       last_iteration_best_move = bestMove;
@@ -129,7 +122,7 @@ void Search::searchBestMove() {
     printInfoLine(bestScore, bestLine, currentDepth, nps, elapsedTime);
 
     // Check if we should stop.
-    if (manageTime(elapsedTime)) {
+    if (manageTime(elapsedTime, bestMoveChanged)) {
       break;
     }
   }
@@ -512,4 +505,25 @@ void Search::logMessage(const std::string &message) {
   } catch (...) {
     // Silently ignore logging errors to prevent crashes
   }
+}
+
+bool Search::manageTime(long long elapsedTime, bool bestMoveChanged) {
+  return timeManager.shouldStopAfterIteration(elapsedTime, bestMoveChanged);
+}
+
+bool Search::checkHardTimeLimit() {
+  if (timeManager.hardLimitReached()) {
+    stopSearchFlag = true;
+    return true;
+  }
+  return false;
+}
+
+long long Search::getElapsedTime() {
+  return timeManager.elapsedMs();
+}
+
+// in search.cpp
+void Search::setTimeValues(const GoOptions& options) {
+  timeManager.setTimeValues(options);
 }
