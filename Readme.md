@@ -37,7 +37,8 @@ cd build
    Note: U can also specify build type. By default it is release that is optimized and faster. U can also use debug mode but it will be very slow only recomended for debugging.
 
 ```sh
-cmake .. && make
+cmake .. -DINDUS_ENABLE_AVX2=ON
+cmake --build . --config Release
 ```
 
 The executable will be created in the directory make sure the network file is present before running the engine

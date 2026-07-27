@@ -64,6 +64,8 @@ class Search {
 
   chess::GameResultReason getGameOverReason(const chess::Board &board);
 
+  bool isSearchDraw(const chess::Board &board, int ply);
+
   int getPieceValue(chess::Piece piece);
 
   void printInfoLine(int eval, std::vector<chess::Move> pv, int currentDepth,

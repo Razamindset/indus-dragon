@@ -101,9 +101,12 @@ long long Search::benchSearch(int depth) {
   return positionsSearched;
 }
 
-void Search::searchBestMove(int depth=0) {
+void Search::searchBestMove(int depth) {
   stopSearchFlag = false;
   if (isGameOver(board)) {
+    const std::string bestmove_str = "bestmove 0000";
+    std::cout << bestmove_str << std::endl;
+    logMessage(bestmove_str);
     return;
   }
 
@@ -176,6 +179,10 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   if (stopSearchFlag || checkHardTimeLimit()) {
     return 0;
   }
+  
+  if (ply >= MAX_SEARCH_DEPTH - 1) {
+    return evaluate(ply);
+  }
 
   if ((positionsSearched & 2047) == 0) {
     communicate();
@@ -192,7 +199,11 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     if (getGameOverReason(board) == chess::GameResultReason::CHECKMATE)
       return -MATE_SCORE + ply;
     else
-      return 0;
+      return DRAW_SCORE;
+  }
+
+  if (isSearchDraw(board, ply)) {
+    return DRAW_SCORE;
   }
 
   if (depth == 0) {
@@ -203,15 +214,6 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
     } else {
       return qsearch(alpha, beta, ply);
     }
-  }
-
-  if (board.isRepetition(1)) {
-    return 0;
-  }
-
-  if (board.isHalfMoveDraw() &&
-      board.getHalfMoveDrawType().second == chess::GameResult::DRAW) {
-    return 0;
   }
 
   uint64_t boardhash = board.hash();
@@ -397,6 +399,10 @@ int Search::qsearch(int alpha, int beta, int ply) {
     return 0;
   }
 
+  if (ply >= MAX_SEARCH_DEPTH - 1) {
+    return evaluate(ply);
+  }
+
   if ((positionsSearched & 2047) == 0) {
     communicate();
   }
@@ -410,7 +416,11 @@ int Search::qsearch(int alpha, int beta, int ply) {
     if (getGameOverReason(board) == chess::GameResultReason::CHECKMATE)
       return -MATE_SCORE + ply;
     else
-      return 0;
+      return DRAW_SCORE;
+  }
+
+  if (isSearchDraw(board, ply)) {
+    return DRAW_SCORE;
   }
 
   int standPat = evaluate(ply);
@@ -495,6 +505,19 @@ bool Search::isGameOver(const chess::Board &board) {
 chess::GameResultReason Search::getGameOverReason(const chess::Board &board) {
   auto result = board.isGameOver();
   return result.first;
+}
+
+bool Search::isSearchDraw(const chess::Board &board, int ply) {
+  if (ply == 0) {
+    return false;
+  }
+
+  if (board.isRepetition(1)) {
+    return true;
+  }
+
+  return board.isHalfMoveDraw() &&
+         board.getHalfMoveDrawType().second == chess::GameResult::DRAW;
 }
 
 void Search::printInfoLine(int bestScore, std::vector<chess::Move> bestLine,
