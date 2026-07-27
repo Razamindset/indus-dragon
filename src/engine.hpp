@@ -27,6 +27,8 @@ class Engine {
   void handleFen(std::istringstream &iss);
 
   void handleBench();
+
+  void handleSetOption(std::istringstream &iss);
   
  private:
   chess::Board board;

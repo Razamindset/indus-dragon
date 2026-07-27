@@ -22,7 +22,12 @@ struct TTEntry {
 
 class TranspositionTable {
  public:
-  TranspositionTable();  // Constructor to initialize the vector
+  explicit TranspositionTable(size_t mb = 16);  // default 16 MB
+
+  // Resize the table to hold roughly `mb` megabytes. Always rounds down to
+  // a power-of-two entry count so the `hash & sizeMask` trick keeps working.
+  // Wipes all existing entries (unavoidable — the index scheme changes).
+  void resize(size_t mb);
 
   void storeTT(uint64_t hash, int depth, int score, TTEntryType type,
                chess::Move bestMove, int ply);
@@ -31,13 +36,9 @@ class TranspositionTable {
                chess::Move &bestMove, int ply);
 
   void clear_table() {
-    // CRASH FIX: Originally used transpositionTable.clear(), which reduced the 
-    // vector size to 0 and caused out-of-bounds access during search.
-    // Preserving size and resetting entries instead.
     for (auto &entry : transpositionTable) {
       entry = TTEntry{};
     }
-
     ttHits = 0;
     ttStores = 0;
   }
@@ -47,6 +48,9 @@ class TranspositionTable {
 
  private:
   std::vector<TTEntry> transpositionTable;
-  int ttHits = 0;    // Number of search matches
-  int ttStores = 0;  // Total stores
+  size_t sizeMask = 0;  // entries - 1, entries is always a power of two
+  int ttHits = 0;       // Number of search matches
+  int ttStores = 0;     // Total stores
+
+  static size_t entriesForMB(size_t mb);
 };

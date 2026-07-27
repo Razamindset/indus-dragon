@@ -108,6 +108,32 @@ void Engine::handleFen(std::istringstream &iss) {
   }
 }
 
+
+void Engine::handleSetOption(std::istringstream &iss) {
+  std::string token, name, value;
+
+  iss >> token;  // consumes "name"
+  while (iss >> token && token != "value") {
+    if (!name.empty()) name += " ";
+    name += token;
+  }
+  while (iss >> token) {
+    if (!value.empty()) value += " ";
+    value += token;
+  }
+
+  if (name == "Hash") {
+    try {
+      int mb = std::stoi(value);
+      mb = std::max(1, std::min(1024, mb));
+      tt_helper.resize(static_cast<size_t>(mb));
+    } catch (...) {
+      // malformed value, ignore
+    }
+  }
+}
+
+
 void Engine::uciLoop() {
   /*
   This loop will be in action while there is no search ongoing.
@@ -134,6 +160,8 @@ void Engine::uciLoop() {
     if (token == "uci") {
       std::string idName = "id name Indus Dragon";
       std::string idAuthor = "id author Razamindset";
+      std::cout << "option name Hash type spin default 16 min 1 max 1024" << std::endl;
+
       std::string uciOk = "uciok";
 
       std::cout << idName << std::endl;
@@ -163,6 +191,8 @@ void Engine::uciLoop() {
       tt_helper.printTTStats();
     } else if (token == "go") {
       handleGo(iss);
+    } else if (token == "setoption") {
+      handleSetOption(iss);
     }
   }
 }
