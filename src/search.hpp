@@ -14,7 +14,7 @@ class Search {
  public:
   Search(chess::Board &board, TranspositionTable &tt_helper);
 
-  void searchBestMove(int depth);
+  void searchBestMove(int depth = 0);
 
   void stopSearch() { stopSearchFlag = true; }
 
