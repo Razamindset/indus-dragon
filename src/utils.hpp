@@ -8,6 +8,7 @@ struct GoOptions {
   long long movestogo = 0;
   long long movetime = 0;
   bool infinite = false;
+  int depth;
 
   bool hasTimeLimit() const {
     return !infinite && (wtime > 0 || btime > 0 || movetime > 0);

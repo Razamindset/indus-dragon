@@ -101,7 +101,7 @@ long long Search::benchSearch(int depth) {
   return positionsSearched;
 }
 
-void Search::searchBestMove() {
+void Search::searchBestMove(int depth=-1) {
   stopSearchFlag = false;
   if (isGameOver(board)) {
     return;
@@ -121,8 +121,11 @@ void Search::searchBestMove() {
 
   nnue.refreshAccumulator(board, accStack[0]);
 
+  int depth_to_search = MAX_SEARCH_DEPTH;
+  if(depth > 0) depth_to_search = depth;
+
   // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= MAX_SEARCH_DEPTH; ++currentDepth) {
+  for (int currentDepth = 1; currentDepth <= depth_to_search; ++currentDepth) {
     int bestScore = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
 
     // If the hard time limit was hit, stop searching immediately.

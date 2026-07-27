@@ -35,6 +35,8 @@ GoOptions parseGoOptions(std::istringstream& iss) {
       iss >> options.movestogo;
     } else if (token == "movetime") {
       iss >> options.movetime;
+    } else if (token == "depth"){
+      iss >> options.depth;
     }
   }
 
@@ -63,7 +65,7 @@ void Engine::handleBench() {
 void Engine::handleGo(std::istringstream& iss) {
   GoOptions options = parseGoOptions(iss);
   search.setTimeValues(options);
-  search.searchBestMove();
+  search.searchBestMove(options.depth);
 }
 
 
