@@ -41,6 +41,25 @@ GoOptions parseGoOptions(std::istringstream& iss) {
   return options;
 }
 
+void Engine::handleBench() {
+  const int benchDepth = 8; // fixed depth, not time-limited
+  long long totalNodes = 0;
+  auto start = std::chrono::steady_clock::now();
+
+  for (const auto& fen : BENCH_POSITIONS) {
+    board.setFen(fen);
+    search.setTimeValues(GoOptions{}); // infinite/no time limit — depth-limited only
+    // (needs a depth-limited entry point into Search — see note below)
+    totalNodes += search.benchSearch(benchDepth);
+  }
+
+  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start).count();
+  long long nps = elapsed > 0 ? (totalNodes * 1000) / elapsed : 0;
+
+  std::cout << totalNodes << " nodes " << nps << " nps\n";
+}
+
 void Engine::handleGo(std::istringstream& iss) {
   GoOptions options = parseGoOptions(iss);
   search.setTimeValues(options);
@@ -96,11 +115,11 @@ void Engine::uciLoop() {
   Therefore in ideal conditions stopsearch will never need to be called from
   here.
   */
-
-  std::cout << "Extended Commands for debugging\n";
-  std::cout << "'d' - print the current board\n";
-  std::cout << "'togglelogs' - Write the engine logs to a log file for debug\n";
-  std::cout << "'ttstats' - Print TTHits and Stores\n";
+ std::cout << "Extended Commands for debugging\n";
+ std::cout << "'d' - print the current board\n";
+ std::cout << "'togglelogs' - Write the engine logs to a log file for debug\n";
+ std::cout << "'ttstats' - Print TTHits and Stores\n";
+ std::cout << "'bench' - run fixed-depth benchmark for regression testing\n";
 
   std::string cmd;
 
@@ -134,6 +153,8 @@ void Engine::uciLoop() {
       exit(0);
     } else if (token == "ucinewgame") {
       initializeEngine();
+    } else if (token == "bench") {
+      handleBench();
     } else if (token == "togglelogs") {
       search.toggleLogs();
     } else if (token == "ttstats") {

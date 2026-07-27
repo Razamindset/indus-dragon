@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <string>
 #include <vector>
 
@@ -26,6 +25,8 @@ class Search {
   void toggleLogs() { storeLogs = !storeLogs; }
 
   void communicate();
+
+  long long benchSearch(int depth);
 
  private:
   chess::Board &board;

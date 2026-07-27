@@ -71,6 +71,36 @@ Search::Search(chess::Board &board, TranspositionTable &tt_helper)
   nnue.load_network();
 }
 
+long long Search::benchSearch(int depth) {
+  stopSearchFlag = false;
+  positionsSearched = 0;
+
+  if (isGameOver(board)) {
+    return positionsSearched;
+  }
+
+  clearKiller();
+  clearHistory();
+
+  chess::Move bestMove = chess::Move::NULL_MOVE;
+  int bestScore = 0;
+
+  nnue.refreshAccumulator(board, accStack[0]);
+
+  for (int currentDepth = 1; currentDepth <= depth; ++currentDepth) {
+    bestScore = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
+
+    if (!pvTable[0].empty()) {
+      bestMove = pvTable[0].front();
+    }
+  }
+
+  std::cout << "nodes " << positionsSearched << " score " << bestScore
+             << " bestmove " << chess::uci::moveToUci(bestMove) << "\n";
+
+  return positionsSearched;
+}
+
 void Search::searchBestMove() {
   stopSearchFlag = false;
   if (isGameOver(board)) {
@@ -523,7 +553,6 @@ long long Search::getElapsedTime() {
   return timeManager.elapsedMs();
 }
 
-// in search.cpp
 void Search::setTimeValues(const GoOptions& options) {
   timeManager.setTimeValues(options);
 }

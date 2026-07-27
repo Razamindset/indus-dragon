@@ -26,6 +26,8 @@ class Engine {
 
   void handleFen(std::istringstream &iss);
 
+  void handleBench();
+  
  private:
   chess::Board board;
   TranspositionTable tt_helper;

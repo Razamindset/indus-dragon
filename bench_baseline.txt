@@ -1,0 +1,6 @@
+bench
+nodes 73513 score 31 bestmove e2e4
+nodes 365200 score 38 bestmove d5e6
+nodes 17280 score 151 bestmove b4f4
+nodes 194870 score 38 bestmove d1b3
+650863 nodes 128985 nps
