@@ -269,16 +269,26 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   for (int i = 0; i < moves.size(); ++i) {
     chess::Move move = moves[i];
 
+    // Capture the flags for later use before making the move
+    const bool isCapture = board.isCapture(move);
+    const bool isPromotion = move.typeOf() == chess::Move::PROMOTION;
+    const bool wasInCheck = board.inCheck();  // side to move, before this move
+
     // Incremental NNUE update
     accStack[ply + 1] = accStack[ply];
     nnue.updateAccumulator(board, move, accStack[ply + 1]);
 
     board.makeMove(move);
 
+    const bool givesCheck = board.inCheck();  // opponent, after this move — valid now that move is made
+
     int score;
 
+    bool skipReduction = i < LMR_FULL_DEPTH_MOVES || depth < LMR_MIN_DEPTH ||
+                        isCapture || isPromotion || wasInCheck || givesCheck;
+
     // Late Move Reductions
-    if (i < LMR_FULL_DEPTH_MOVES || depth < LMR_MIN_DEPTH) {
+    if (skipReduction) {
       // Search first N moves with full depth
       score = -negamax(depth - 1, -beta, -alpha, ply + 1, false);
     } else {
