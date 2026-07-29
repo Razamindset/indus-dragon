@@ -74,6 +74,19 @@ void TranspositionTable::storeTT(uint64_t hash, int depth, int score,
   }
 
   const size_t index = hash & sizeMask;
-  transpositionTable[index] = {hash, score, depth, type, bestMove};
-  ttStores++;
+  TTEntry &entry = transpositionTable[index];
+
+  // Replacement policy: always take an empty/different-position slot,
+  // otherwise only overwrite if the new search was at least as deep,
+  // or if the new entry is EXACT (more informative than a bound)
+  // replacing a non-EXACT entry at the same or shallower depth.
+  const bool differentPosition = entry.hash != hash;
+  const bool deeperOrEqual = depth >= entry.depth;
+  const bool upgradingToExact =
+      type == TTEntryType::EXACT && entry.type != TTEntryType::EXACT;
+
+  if (differentPosition || deeperOrEqual || upgradingToExact) {
+    entry = {hash, score, depth, type, bestMove};
+    ttStores++;
+  }
 }
