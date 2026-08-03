@@ -613,26 +613,33 @@ int Search::qsearch(int alpha, int beta, int ply) {
     return DRAW_SCORE;
   }
 
-  int standPat = evaluate(ply);
+  const bool inCheck = board.inCheck();
 
-  if (standPat >= beta) {
-    return beta;
+  int standPat = 0;
+  if (!inCheck) {
+    // Stand-pat is only sound when not in check: it assumes "doing
+    // nothing" is a reasonable option, which isn't true when you're in
+    // check and forced to respond somehow.
+
+     int standPat = evaluate(ply);
+
+    if (standPat >= beta) {
+      return beta;
+    }
+    alpha = std::max(alpha, standPat);
   }
-  alpha = std::max(alpha, standPat);
 
   chess::Movelist allMoves;
   chess::movegen::legalmoves<chess::movegen::MoveGenType::ALL>(allMoves, board);
 
   chess::Movelist moves;
   for (chess::Move m : allMoves) {
-    if (board.isCapture(m) || m.typeOf() == chess::Move::PROMOTION) {
+    if (inCheck || board.isCapture(m) || m.typeOf() == chess::Move::PROMOTION) {
       moves.add(m);
     }
   }
 
   orderMoves(moves, chess::Move::NULL_MOVE, ply, true);
-
-  const bool inCheck = board.inCheck();
 
   for (chess::Move move : moves) {
     // SEE pruning: skip captures that lose material outright. Standing
