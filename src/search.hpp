@@ -68,6 +68,12 @@ class Search {
 
   int getPieceValue(chess::Piece piece);
 
+  // Static Exchange Evaluation
+  int see(chess::Move move);
+  chess::Bitboard attackersTo(chess::Square sq, chess::Bitboard occupied) const;
+  chess::Square popLeastValuableAttacker(chess::Bitboard &attackers, chess::Color color,
+                                         chess::PieceType &outType) const;
+
   void printInfoLine(int eval, std::vector<chess::Move> pv, int currentDepth,
                      long long nps, long long elapsedTime);
 

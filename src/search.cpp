@@ -385,6 +385,149 @@ int Search::negamax(int depth, int alpha, int beta, int ply,
   return bestScore;
 }
 
+/*
+Returns a bitboard of every piece, either color, that attacks `sq` given a
+(possibly hypothetical) occupancy bitboard. Used by see() to walk through a
+capture sequence as pieces are removed square by square without touching
+the real board.
+*/
+chess::Bitboard Search::attackersTo(chess::Square sq, chess::Bitboard occupied) const {
+  using namespace chess;
+
+  Bitboard attackers = 0ULL;
+
+  // Reverse pawn-attack trick: pawns of `color` that attack `sq` are found
+  // by asking "which squares would a pawn of the opposite color standing on
+  // sq attack" and intersecting with where our pawns actually are.
+  attackers |= attacks::pawn(Color::BLACK, sq) & board.pieces(PieceType::PAWN, Color::WHITE);
+  attackers |= attacks::pawn(Color::WHITE, sq) & board.pieces(PieceType::PAWN, Color::BLACK);
+
+  attackers |= attacks::knight(sq) & (board.pieces(PieceType::KNIGHT, Color::WHITE) |
+                                      board.pieces(PieceType::KNIGHT, Color::BLACK));
+
+  const Bitboard bishopsQueens = board.pieces(PieceType::BISHOP, Color::WHITE) |
+                                 board.pieces(PieceType::BISHOP, Color::BLACK) |
+                                 board.pieces(PieceType::QUEEN, Color::WHITE) |
+                                 board.pieces(PieceType::QUEEN, Color::BLACK);
+  attackers |= attacks::bishop(sq, occupied) & bishopsQueens;
+
+  const Bitboard rooksQueens = board.pieces(PieceType::ROOK, Color::WHITE) |
+                               board.pieces(PieceType::ROOK, Color::BLACK) |
+                               board.pieces(PieceType::QUEEN, Color::WHITE) |
+                               board.pieces(PieceType::QUEEN, Color::BLACK);
+  attackers |= attacks::rook(sq, occupied) & rooksQueens;
+
+  attackers |= attacks::king(sq) & (board.pieces(PieceType::KING, Color::WHITE) |
+                                    board.pieces(PieceType::KING, Color::BLACK));
+
+  // Occupied restricts this to pieces that are actually still "on the
+  // board" in this hypothetical position (relevant once see() starts
+  // removing pieces from `occupied` as the exchange progresses).
+  return attackers & occupied;
+}
+
+/*
+Picks the least valuable attacker of `color` out of `attackers`, clears it
+from the bitboard, and reports its piece type via `outType`. Returns
+Square::underlying::NO_SQ if `color` has no attacker left in the set.
+*/
+chess::Square Search::popLeastValuableAttacker(chess::Bitboard &attackers, chess::Color color,
+                                               chess::PieceType &outType) const {
+  using namespace chess;
+
+  static constexpr PieceType::underlying order[6] = {
+      PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+      PieceType::ROOK, PieceType::QUEEN,  PieceType::KING};
+
+  for (PieceType::underlying pt : order) {
+    const Bitboard bb = attackers & board.pieces(PieceType(pt), color);
+    if (bb) {
+      const Square sq(bb.lsb());
+      attackers.clear(sq.index());
+      outType = pt;
+      return sq;
+    }
+  }
+
+  return Square::underlying::NO_SQ;
+}
+
+/*
+Static Exchange Evaluation.
+Simulates the full sequence of captures on move.to() -- both sides always
+recapturing with their least valuable attacker -- and returns the net
+material result in centipawns from the perspective of the side making
+`move`. Doesn't touch the real board; walks a hypothetical occupancy
+bitboard instead. Handles en passant and promotion.
+*/
+int Search::see(chess::Move move) {
+  using namespace chess;
+
+  const Square from = move.from();
+  const Square to = move.to();
+
+  const Piece attackerPiece = board.at(from);
+  const Piece capturedPiece = board.at(to);
+
+  Bitboard occupied = board.occ();
+
+  int gain[32];
+  int d = 0;
+
+  if (move.typeOf() == Move::ENPASSANT) {
+    // The captured pawn sits beside `to`, not on it.
+    const Square epSq(to.file(), from.rank());
+    gain[0] = SEE_VALUES[static_cast<int>(PieceType::PAWN)];
+    occupied.clear(epSq.index());
+  } else {
+    gain[0] = SEE_VALUES[capturedPiece.type()];
+  }
+
+  PieceType currentAttackerType = attackerPiece.type();
+
+  if (move.typeOf() == Move::PROMOTION) {
+    // Credit the pawn -> promoted-piece material swing up front, and the
+    // piece now sitting on `to` for the rest of the exchange is the
+    // promoted piece, not a pawn.
+    gain[0] += SEE_VALUES[move.promotionType()] - SEE_VALUES[static_cast<int>(PieceType::PAWN)];
+    currentAttackerType = move.promotionType();
+  }
+
+  occupied.clear(from.index());  // the initial attacker has now "moved"
+
+  Bitboard attackers = attackersTo(to, occupied);
+  Color side = ~attackerPiece.color();  // opponent recaptures next
+
+  while (true) {
+    PieceType nextType;
+    const Square attackerSq = popLeastValuableAttacker(attackers, side, nextType);
+    if (attackerSq == Square::underlying::NO_SQ) break;
+
+    d++;
+    gain[d] = SEE_VALUES[currentAttackerType] - gain[d - 1];
+
+    // Pruning: if neither side would ever choose to continue the exchange
+    // from here, the rest of the sequence can't change the result.
+    if (std::max(-gain[d - 1], gain[d]) < 0) break;
+
+    occupied.clear(attackerSq.index());
+    // Recompute from scratch: removing a piece can reveal a slider
+    // (bishop/rook/queen) that was previously blocked from `to`.
+    attackers = attackersTo(to, occupied);
+
+    currentAttackerType = nextType;
+    side = ~side;
+  }
+
+  while (d > 0) {
+    gain[d - 1] = -std::max(-gain[d - 1], gain[d]);
+    d--;
+  }
+
+  return gain[0];
+}
+
+
 /* Order moves based on their priority */
 void Search::orderMoves(chess::Movelist &moves, chess::Move ttMove, int ply,
                         bool isQuiescence) {
@@ -398,11 +541,16 @@ void Search::orderMoves(chess::Movelist &moves, chess::Move ttMove, int ply,
       score += 10000;
     }
 
-    // Prioritize captures using MVV-LVA
+    // Order captures by SEE instead of raw MVV-LVA, so a capture that
+    // loses material (e.g. QxP defended by a pawn) doesn't get ranked
+    // above quiet moves just because it grabs a piece.
     if (board.isCapture(move)) {
-      chess::Piece attacker = board.at(move.from());
-      chess::Piece victim = board.at(move.to());
-      score += 3000 + getPieceValue(victim) - getPieceValue(attacker);
+      int seeValue = see(move);
+      if (seeValue >= 0) {
+        score += 8000 + seeValue;  // winning/equal captures: above killers
+      } else {
+        score += 1000 + seeValue;  // losing captures: still above most quiets, below killers
+      }
     } else {
       if (move == killer1) {
         score += 500;  // High score for primary killer
@@ -484,7 +632,18 @@ int Search::qsearch(int alpha, int beta, int ply) {
 
   orderMoves(moves, chess::Move::NULL_MOVE, ply, true);
 
+  const bool inCheck = board.inCheck();
+
   for (chess::Move move : moves) {
+    // SEE pruning: skip captures that lose material outright. Standing
+    // pat already covers "this position is fine without capturing", so
+    // there's no point recursing into a capture that hands over material
+    // for nothing. Skipped while in check, since qsearch doesn't generate
+    // evasions here and every capture may be forced.
+    if (!inCheck && board.isCapture(move) && see(move) < 0) {
+      continue;
+    }
+
     // Incremental NNUE update
     accStack[ply + 1] = accStack[ply];
     nnue.updateAccumulator(board, move, accStack[ply + 1]);

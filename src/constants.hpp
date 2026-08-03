@@ -33,3 +33,8 @@ constexpr double LMR_DIVISOR = 2.5;       // larger = less aggressive reduction
 // Aspiration Windows
 constexpr int ASPIRATION_MIN_DEPTH = 4;  // don't bother below this depth
 constexpr int ASPIRATION_WINDOW = 25;    // initial +/- window, in centipawns
+
+// Static Exchange Evaluation piece values.
+// Indexed by chess::PieceType (which converts to int): PAWN, KNIGHT,
+// BISHOP, ROOK, QUEEN, KING, NONE.
+constexpr int SEE_VALUES[7] = {100, 300, 320, 500, 900, 20000, 0};
