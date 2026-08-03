@@ -29,3 +29,7 @@ static constexpr long long SAFETY_BUFFER = 50;
 constexpr int LMR_FULL_DEPTH_MOVES = 3;   // moves searched at full depth before reducing
 constexpr int LMR_MIN_DEPTH = 3;          // don't reduce below this remaining depth
 constexpr double LMR_DIVISOR = 2.5;       // larger = less aggressive reduction
+
+// Aspiration Windows
+constexpr int ASPIRATION_MIN_DEPTH = 4;  // don't bother below this depth
+constexpr int ASPIRATION_WINDOW = 25;    // initial +/- window, in centipawns

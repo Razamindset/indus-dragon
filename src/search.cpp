@@ -127,14 +127,46 @@ void Search::searchBestMove(int depth) {
   int depth_to_search = MAX_SEARCH_DEPTH;
   if (depth > 0) depth_to_search = std::min(depth, MAX_SEARCH_DEPTH);
 
-  // Iterative Deepening Loop
-  for (int currentDepth = 1; currentDepth <= depth_to_search; ++currentDepth) {
-    int bestScore = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
+  int previousScore = 0;
 
-    // If the hard time limit was hit, stop searching immediately.
+  for (int currentDepth = 1; currentDepth <= depth_to_search; ++currentDepth) {
+    int bestScore;
+
+    if (currentDepth < ASPIRATION_MIN_DEPTH) {
+      bestScore = negamax(currentDepth, -MATE_SCORE, MATE_SCORE, 0, false);
+    } else {
+      int window = ASPIRATION_WINDOW;
+      int alpha = previousScore - window;
+      int beta = previousScore + window;
+
+      while (true) {
+        bestScore = negamax(currentDepth, alpha, beta, 0, false);
+
+        if (stopSearchFlag) break;
+
+        if (bestScore <= alpha) {
+          // Failed low — widen downward and re-search at the same depth
+          alpha = std::max(bestScore - window, -MATE_SCORE);
+          window *= 2;
+          std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
+        } else if (bestScore >= beta) {
+          // Failed high — widen upward and re-search at the same depth
+          beta = std::min(bestScore + window, MATE_SCORE);
+          window *= 2;
+          std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
+
+        } else {
+          // Landed inside the window — this iteration is done
+          break;
+        }
+      }
+    }
+
     if (stopSearchFlag) {
       break;
     }
+
+    previousScore = bestScore;
 
     const auto &currentBestLine = pvTable[0];
     bool bestMoveChanged = false;
