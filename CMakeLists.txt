@@ -23,6 +23,7 @@ set(SOURCES
     src/time_manager.cpp
     src/tt.cpp
     src/nnue.cpp
+    src/datagen.cpp
 )
 
 add_executable(${EXECUTABLE_NAME} ${SOURCES})

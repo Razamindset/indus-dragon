@@ -104,8 +104,10 @@ long long Search::benchSearch(int depth) {
 void Search::searchBestMove(int depth) {
   stopSearchFlag = false;
   if (isGameOver(board)) {
+    lastBestMove = chess::Move::NULL_MOVE;
+    lastScore = 0;
     const std::string bestmove_str = "bestmove 0000";
-    std::cout << bestmove_str << std::endl;
+    if (!silent) std::cout << bestmove_str << std::endl;
     logMessage(bestmove_str);
     return;
   }
@@ -148,12 +150,12 @@ void Search::searchBestMove(int depth) {
           // Failed low — widen downward and re-search at the same depth
           alpha = std::max(bestScore - window, -MATE_SCORE);
           window *= 2;
-          std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
+          if (!silent) std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
         } else if (bestScore >= beta) {
           // Failed high — widen upward and re-search at the same depth
           beta = std::min(bestScore + window, MATE_SCORE);
           window *= 2;
-          std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
+          if (!silent) std::cout<<"info string aspiration refail Depth: "<<currentDepth << " Window_size:  "<< window << std::endl;
 
         } else {
           // Landed inside the window — this iteration is done
@@ -187,7 +189,7 @@ void Search::searchBestMove(int depth) {
     }
 
     // UCI output
-    printInfoLine(bestScore, bestLine, currentDepth, nps, elapsedTime);
+    if (!silent) printInfoLine(bestScore, bestLine, currentDepth, nps, elapsedTime);
 
     // Check if we should stop.
     if (manageTime(elapsedTime, bestMoveChanged)) {
@@ -201,8 +203,13 @@ void Search::searchBestMove(int depth) {
     bestMove = moves[0];
   }
 
+  lastBestMove = bestMove;
+  lastScore = previousScore;
+
   const std::string bestmove_str = "bestmove " + chess::uci::moveToUci(bestMove);
-  std::cout << bestmove_str << std::endl;
+  if (!silent) {
+    std::cout << bestmove_str << std::endl;
+  }
   logMessage(bestmove_str);
 }
 
