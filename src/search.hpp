@@ -28,7 +28,19 @@ class Search {
 
   long long benchSearch(int depth);
 
+  // Datagen support: suppress UCI stdout ("info ..." / "bestmove ...") so we
+  // can drive thousands of searches per second without spamming a log, and
+  // expose the last completed search's result programmatically instead of
+  // parsing stdout.
+  void setSilent(bool s) { silent = s; }
+  int getLastScore() const { return lastScore; }
+  chess::Move getLastBestMove() const { return lastBestMove; }
+
  private:
+  bool silent = false;
+  int lastScore = 0;
+  chess::Move lastBestMove = chess::Move::NULL_MOVE;
+
   chess::Board &board;
 
   TranspositionTable &tt_helper;
